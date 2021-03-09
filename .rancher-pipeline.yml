@@ -1,4 +1,9 @@
 stages:
+- name: Clone submodules
+  steps:
+  - runScriptConfig:
+      image: alpine/git
+      shellScript: git submodule update --init --recursive
 - name: Build
   steps:
   - runScriptConfig:
