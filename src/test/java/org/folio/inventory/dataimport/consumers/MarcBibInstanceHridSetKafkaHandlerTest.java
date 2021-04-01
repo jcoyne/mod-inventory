@@ -17,7 +17,6 @@ import org.folio.inventory.domain.instances.Instance;
 import org.folio.inventory.domain.instances.InstanceCollection;
 import org.folio.inventory.storage.Storage;
 import org.folio.inventory.support.InstanceUtil;
-import org.folio.kafka.cache.KafkaInternalCache;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.rest.jaxrs.model.Event;
 import org.folio.rest.jaxrs.model.MappingDetail;
@@ -59,8 +58,6 @@ public class MarcBibInstanceHridSetKafkaHandlerTest {
   private InstanceCollection mockedInstanceCollection;
   @Mock
   private KafkaConsumerRecord<String, String> kafkaRecord;
-  @Mock
-  private KafkaInternalCache kafkaInternalCache;
 
   private ActionProfile actionProfile = new ActionProfile()
     .withId(UUID.randomUUID().toString())
@@ -113,7 +110,7 @@ public class MarcBibInstanceHridSetKafkaHandlerTest {
       return null;
     }).when(mockedInstanceCollection).update(any(Instance.class), any(Consumer.class), any(Consumer.class));
 
-    marcBibInstanceHridSetKafkaHandler = new MarcBibInstanceHridSetKafkaHandler(new InstanceUpdateDelegate(mockedStorage), kafkaInternalCache);
+    marcBibInstanceHridSetKafkaHandler = new MarcBibInstanceHridSetKafkaHandler(new InstanceUpdateDelegate(mockedStorage));
   }
 
   @Test
@@ -125,12 +122,10 @@ public class MarcBibInstanceHridSetKafkaHandlerTest {
     payload.put("MAPPING_RULES", mappingRules.encode());
     payload.put("MAPPING_PARAMS", new JsonObject().encode());
 
-    Event event = new Event().withId("01").withEventPayload(ZIPArchiver.zip(Json.encode(payload)));
+    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(payload)));
     String expectedKafkaRecordKey = "test_key";
     when(kafkaRecord.key()).thenReturn(expectedKafkaRecordKey);
     when(kafkaRecord.value()).thenReturn(Json.encode(event));
-
-    Mockito.when(kafkaInternalCache.containsByKey("01")).thenReturn(false);
 
     // when
     Future<String> future = marcBibInstanceHridSetKafkaHandler.handle(kafkaRecord);
@@ -151,10 +146,8 @@ public class MarcBibInstanceHridSetKafkaHandlerTest {
     payload.put("MAPPING_RULES", mappingRules.encode());
     payload.put("MAPPING_PARAMS", new JsonObject().encode());
 
-    Event event = new Event().withId("01").withEventPayload(ZIPArchiver.zip(Json.encode(payload)));
+    Event event = new Event().withEventPayload(ZIPArchiver.zip(Json.encode(payload)));
     when(kafkaRecord.value()).thenReturn(Json.encode(event));
-
-    Mockito.when(kafkaInternalCache.containsByKey("01")).thenReturn(false);
 
     // when
     Future<String> future = marcBibInstanceHridSetKafkaHandler.handle(kafkaRecord);
@@ -170,10 +163,8 @@ public class MarcBibInstanceHridSetKafkaHandlerTest {
   public void shouldReturnFailedFutureWhenPayloadCanNotBeMapped(TestContext context) {
     // given
     Async async = context.async();
-    Event event = new Event().withId("01").withEventPayload(null);
+    Event event = new Event().withEventPayload(null);
     when(kafkaRecord.value()).thenReturn(Json.encode(event));
-
-    Mockito.when(kafkaInternalCache.containsByKey("01")).thenReturn(false);
 
     // when
     Future<String> future = marcBibInstanceHridSetKafkaHandler.handle(kafkaRecord);
@@ -181,33 +172,6 @@ public class MarcBibInstanceHridSetKafkaHandlerTest {
     // then
     future.onComplete(ar -> {
       context.assertTrue(ar.failed());
-      async.complete();
-    });
-  }
-
-  @Test
-  public void shouldNotHandleIfCacheAlreadyContainsThisEvent(TestContext context) throws IOException {
-    // given
-    Async async = context.async();
-    Map<String, String> payload = new HashMap<>();
-    payload.put(Record.RecordType.MARC.value(), Json.encode(record));
-    payload.put("MAPPING_RULES", mappingRules.encode());
-    payload.put("MAPPING_PARAMS", new JsonObject().encode());
-
-    Event event = new Event().withId("01").withEventPayload(ZIPArchiver.zip(Json.encode(payload)));
-    String expectedKafkaRecordKey = "test_key";
-    when(kafkaRecord.key()).thenReturn(expectedKafkaRecordKey);
-    when(kafkaRecord.value()).thenReturn(Json.encode(event));
-
-    Mockito.when(kafkaInternalCache.containsByKey("01")).thenReturn(true);
-
-    // when
-    Future<String> future = marcBibInstanceHridSetKafkaHandler.handle(kafkaRecord);
-
-    // then
-    future.onComplete(ar -> {
-      context.assertTrue(ar.succeeded());
-      context.assertNotEquals(expectedKafkaRecordKey, ar.result());
       async.complete();
     });
   }

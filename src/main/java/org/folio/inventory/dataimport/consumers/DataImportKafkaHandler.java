@@ -1,19 +1,15 @@
 package org.folio.inventory.dataimport.consumers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonObject;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
-
 import org.folio.DataImportEventPayload;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.inventory.dataimport.HoldingWriterFactory;
@@ -36,7 +32,6 @@ import org.folio.inventory.dataimport.handlers.matching.loaders.InstanceLoader;
 import org.folio.inventory.dataimport.handlers.matching.loaders.ItemLoader;
 import org.folio.inventory.storage.Storage;
 import org.folio.kafka.AsyncRecordHandler;
-import org.folio.kafka.cache.KafkaInternalCache;
 import org.folio.processing.events.EventManager;
 import org.folio.processing.events.utils.ZIPArchiver;
 import org.folio.processing.mapping.MappingManager;
@@ -56,13 +51,11 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
 
   private static final Logger LOGGER = LogManager.getLogger(DataImportKafkaHandler.class);
   private static final ObjectMapper OBJECT_MAPPER = ObjectMapperTool.getMapper();
-  private KafkaInternalCache kafkaInternalCache;
 
   private Vertx vertx;
 
-  public DataImportKafkaHandler(Vertx vertx, Storage storage, HttpClient client, KafkaInternalCache kafkaInternalCache) {
+  public DataImportKafkaHandler(Vertx vertx, Storage storage, HttpClient client) {
     this.vertx = vertx;
-    this.kafkaInternalCache = kafkaInternalCache;
     registerDataImportProcessingHandlers(storage, client);
   }
 
@@ -71,27 +64,23 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
     try {
       Promise<String> promise = Promise.promise();
       Event event = OBJECT_MAPPER.readValue(record.value(), Event.class);
-      if (!kafkaInternalCache.containsByKey(event.getId())) {
-        kafkaInternalCache.putToCache(event.getId());
-        DataImportEventPayload eventPayload = new JsonObject(ZIPArchiver.unzip(event.getEventPayload())).mapTo(DataImportEventPayload.class);
-        LOGGER.info(format("Data import event payload has been received with event type: %s", eventPayload.getEventType()));
+      DataImportEventPayload eventPayload = new JsonObject(ZIPArchiver.unzip(event.getEventPayload())).mapTo(DataImportEventPayload.class);
+      LOGGER.info(format("Data import event payload has been received with event type: %s", eventPayload.getEventType()));
 
-        EventManager.handleEvent(eventPayload).whenComplete((processedPayload, throwable) -> {
-          if (throwable != null) {
-            promise.fail(throwable);
-          } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
-            promise.fail("Failed to process data import event payload");
-          } else {
-            promise.complete(record.key());
-          }
-        });
-        return promise.future();
-      }
+      EventManager.handleEvent(eventPayload).whenComplete((processedPayload, throwable) -> {
+        if (throwable != null) {
+          promise.fail(throwable);
+        } else if (DI_ERROR.value().equals(processedPayload.getEventType())) {
+          promise.fail("Failed to process data import event payload");
+        } else {
+          promise.complete(record.key());
+        }
+      });
+      return promise.future();
     } catch (IOException e) {
       LOGGER.error(format("Failed to process data import kafka record from topic %s", record.topic()), e);
       return Future.failedFuture(e);
     }
-    return Future.succeededFuture();
   }
 
   private void registerDataImportProcessingHandlers(Storage storage, HttpClient client) {

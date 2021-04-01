@@ -4,7 +4,6 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonObject;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.inventory.dataimport.consumers.MarcBibInstanceHridSetKafkaHandler;
@@ -15,8 +14,6 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
-import org.folio.kafka.cache.KafkaInternalCache;
-import org.folio.kafka.cache.util.CacheUtil;
 import org.folio.util.pubsub.PubSubClientUtils;
 
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_INSTANCE_HRID_SET;
@@ -30,8 +27,6 @@ import static org.folio.inventory.dataimport.util.KafkaConfigConstants.OKAPI_URL
 public class MarcBibInstanceHridSetConsumerVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = LogManager.getLogger(MarcBibInstanceHridSetConsumerVerticle.class);
-  private static final long DELAY_TIME_BETWEEN_EVENTS_CLEANUP_VALUE_MILLIS = 3600000;
-  private static final int EVENT_TIMEOUT_VALUE_HOURS = 3;
   private static final GlobalLoadSensor GLOBAL_LOAD_SENSOR = new GlobalLoadSensor();
 
   private final int loadLimit = getLoadLimit();
@@ -64,18 +59,11 @@ public class MarcBibInstanceHridSetConsumerVerticle extends AbstractVerticle {
     HttpClient client = vertx.createHttpClient();
     Storage storage = Storage.basedUpon(vertx, config, client);
     InstanceUpdateDelegate instanceUpdateDelegate = new InstanceUpdateDelegate(storage);
-
-    KafkaInternalCache kafkaInternalCache = KafkaInternalCache.builder()
-      .kafkaConfig(kafkaConfig).build();
-    kafkaInternalCache.initKafkaCache();
-
-    MarcBibInstanceHridSetKafkaHandler marcBibInstanceHridSetKafkaHandler = new MarcBibInstanceHridSetKafkaHandler(instanceUpdateDelegate, kafkaInternalCache);
+    MarcBibInstanceHridSetKafkaHandler marcBibInstanceHridSetKafkaHandler = new MarcBibInstanceHridSetKafkaHandler(instanceUpdateDelegate);
 
     consumerWrapper.start(marcBibInstanceHridSetKafkaHandler, PubSubClientUtils.constructModuleName())
       .onSuccess(v -> startPromise.complete())
       .onFailure(startPromise::fail);
-
-    CacheUtil.initCacheCleanupPeriodicTask(vertx, kafkaInternalCache, DELAY_TIME_BETWEEN_EVENTS_CLEANUP_VALUE_MILLIS, EVENT_TIMEOUT_VALUE_HOURS);
   }
 
   @Override
