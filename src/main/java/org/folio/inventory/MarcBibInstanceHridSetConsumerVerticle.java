@@ -5,6 +5,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonObject;
 
+import io.vertx.ext.web.client.WebClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.inventory.dataimport.consumers.MarcBibInstanceHridSetKafkaHandler;
@@ -63,7 +64,7 @@ public class MarcBibInstanceHridSetConsumerVerticle extends AbstractVerticle {
 
     HttpClient client = vertx.createHttpClient();
     Storage storage = Storage.basedUpon(vertx, config, client);
-    InstanceUpdateDelegate instanceUpdateDelegate = new InstanceUpdateDelegate(storage);
+    InstanceUpdateDelegate instanceUpdateDelegate = new InstanceUpdateDelegate(storage, WebClient.wrap(client));
 
     KafkaInternalCache kafkaInternalCache = KafkaInternalCache.builder()
       .kafkaConfig(kafkaConfig).build();

@@ -113,7 +113,8 @@ public class MarcBibInstanceHridSetKafkaHandlerTest {
       return null;
     }).when(mockedInstanceCollection).update(any(Instance.class), any(Consumer.class), any(Consumer.class));
 
-    marcBibInstanceHridSetKafkaHandler = new MarcBibInstanceHridSetKafkaHandler(new InstanceUpdateDelegate(mockedStorage), kafkaInternalCache);
+//    marcBibInstanceHridSetKafkaHandler = new MarcBibInstanceHridSetKafkaHandler(new InstanceUpdateDelegate(mockedStorage, null), kafkaInternalCache); //todo:
+    marcBibInstanceHridSetKafkaHandler = new MarcBibInstanceHridSetKafkaHandler(new InstanceUpdateDelegate(mockedStorage, ctxt -> null), kafkaInternalCache); //todo:
   }
 
   @Test

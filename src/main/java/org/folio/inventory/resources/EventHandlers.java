@@ -61,7 +61,7 @@ public class EventHandlers {
     EventManager.registerEventHandler(new UpdateItemEventHandler(storage));
     EventManager.registerEventHandler(new UpdateHoldingEventHandler(storage));
     EventManager.registerEventHandler(new ReplaceInstanceEventHandler(storage, WebClient.wrap(client)));
-    EventManager.registerEventHandler(new MarcBibModifiedPostProcessingEventHandler(new InstanceUpdateDelegate(storage)));
+//    EventManager.registerEventHandler(new MarcBibModifiedPostProcessingEventHandler(new InstanceUpdateDelegate(storage))); todo:
   }
 
 }
