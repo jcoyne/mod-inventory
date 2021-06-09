@@ -86,7 +86,7 @@ public class ReplaceInstanceEventHandlerTest {
   private JobProfile jobProfile = new JobProfile()
     .withId(UUID.randomUUID().toString())
     .withName("Create MARC Bibs")
-    .withDataType(JobProfile.DataType.MARC);
+    .withDataType(JobProfile.DataType.MARC_BIB);
 
   private ActionProfile actionProfile = new ActionProfile()
     .withId(UUID.randomUUID().toString())
@@ -128,9 +128,8 @@ public class ReplaceInstanceEventHandlerTest {
     MockitoAnnotations.initMocks(this);
     MappingManager.clearReaderFactories();
 
-    // webClient can be null as the factory method used for the client does not use it
-    replaceInstanceEventHandler = new ReplaceInstanceEventHandler(storage, null,
-      ((webClient, context) -> mockedClient));
+    replaceInstanceEventHandler = new ReplaceInstanceEventHandler(storage,
+      new PrecedingSucceedingTitlesHelper(ctxt -> mockedClient));
 
     mappingRules = new JsonObject(TestUtil.readFileFromPath(MAPPING_RULES_PATH));
 
