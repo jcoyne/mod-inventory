@@ -172,16 +172,24 @@
       <artifactId>joda-time</artifactId>
       <version>2.10.3</version>
     </dependency>
+    <!-- TODO: THE VERSION OF LIBRARY MUST BE CHANGED BACK ONCE TESTING ON RANCHER IS COMPLETE-->
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>mod-source-record-storage-client</artifactId>
-      <version>5.1.0</version>
+<!--      <version>5.1.0</version>-->
       <type>jar</type>
+      <version>5.2.0-SNAPSHOT</version>
+      <scope>system</scope>
+      <systemPath>${project.basedir}/lib/mod-source-record-storage-client-5.2.0-SNAPSHOT.jar</systemPath>
     </dependency>
+    <!-- TODO: THE VERSION OF LIBRARY MUST BE CHANGED BACK ONCE TESTING ON RANCHER IS COMPLETE-->
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>data-import-processing-core</artifactId>
-      <version>3.1.0</version>
+<!--      <version>3.1.0</version>-->
+      <scope>system</scope>
+      <version>3.2.0-SNAPSHOT</version>
+      <systemPath>${project.basedir}/lib/data-import-processing-core-fat.jar</systemPath>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
@@ -371,6 +379,7 @@
                   <manifestEntries>
                     <Main-Class>org.folio.inventory.Launcher</Main-Class>
                     <Multi-Release>true</Multi-Release>
+                    <Class-Path>lib/data-import-processing-core-fat.jar lib/mod-source-record-storage-client-5.2.0-SNAPSHOT.jar</Class-Path>
                   </manifestEntries>
                 </transformer>
               </transformers>
