@@ -23,7 +23,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 public final class ItemUtil {
-
   private static final String MATERIAL_TYPE_ID_KEY = "materialTypeId";
   private static final String PERMANENT_LOAN_TYPE_ID_KEY = "permanentLoanTypeId";
   private static final String TEMPORARY_LOAN_TYPE_ID_KEY = "temporaryLoanTypeId";
@@ -89,6 +88,7 @@ public final class ItemUtil {
       itemFromServer.getString(PERMANENT_LOAN_TYPE_ID_KEY),
       itemFromServer.getJsonObject("metadata"))
       .withHrid(itemFromServer.getString(Item.HRID_KEY))
+      .withEffectiveShelvingOrder(itemFromServer.getString(Item.EFFECTIVE_SHELVING_ORDER_KEY))
       .withFormerIds(formerIds)
       .withDiscoverySuppress(itemFromServer.getBoolean(Item.DISCOVERY_SUPPRESS_KEY))
       .withBarcode(itemFromServer.getString(BARCODE))
@@ -118,7 +118,7 @@ public final class ItemUtil {
       .withYearCaption(yearCaption)
       .withElectronicAccess(mappedElectronicAccess)
       .withStatisticalCodeIds(statisticalCodeIds)
-      .withPurchaseOrderLineidentifier(itemFromServer.getString(Item.PURCHASE_ORDER_LINE_IDENTIFIER))
+      .withPurchaseOrderLineIdentifier(itemFromServer.getString(Item.PURCHASE_ORDER_LINE_IDENTIFIER))
       .withTags(tags)
       .withLastCheckIn(LastCheckIn.from(itemFromServer.getJsonObject("lastCheckIn")))
       .withEffectiveCallNumberComponents(
@@ -139,7 +139,6 @@ public final class ItemUtil {
     if(item.getLastCheckIn() != null) {
       itemToSend.put(Item.LAST_CHECK_IN, item.getLastCheckIn().toJson());
     }
-
     includeIfPresent(itemToSend, Item.HRID_KEY, item.getHrid());
     itemToSend.put(Item.FORMER_IDS_KEY, item.getFormerIds());
     itemToSend.put(Item.DISCOVERY_SUPPRESS_KEY, item.getDiscoverySuppress());
@@ -172,7 +171,7 @@ public final class ItemUtil {
     itemToSend.put(Item.YEAR_CAPTION_KEY, item.getYearCaption());
     itemToSend.put(Item.ELECTRONIC_ACCESS_KEY, item.getElectronicAccess());
     itemToSend.put(Item.STATISTICAL_CODE_IDS_KEY, item.getStatisticalCodeIds());
-    itemToSend.put(Item.PURCHASE_ORDER_LINE_IDENTIFIER, item.getPurchaseOrderLineidentifier());
+    itemToSend.put(Item.PURCHASE_ORDER_LINE_IDENTIFIER, item.getPurchaseOrderLineIdentifier());
     itemToSend.put(Item.TAGS_KEY, new JsonObject().put(Item.TAG_LIST_KEY, new JsonArray(item.getTags())));
 
     return itemToSend;
@@ -231,6 +230,7 @@ public final class ItemUtil {
       .withDiscoverySuppress(itemRequest.getBoolean(Item.DISCOVERY_SUPPRESS_KEY))
       .withBarcode(itemRequest.getString(BARCODE))
       .withItemLevelCallNumber(itemRequest.getString(Item.ITEM_LEVEL_CALL_NUMBER_KEY))
+      .withEffectiveShelvingOrder(itemRequest.getString(Item.EFFECTIVE_SHELVING_ORDER_KEY))
       .withItemLevelCallNumberPrefix(itemRequest.getString(Item.ITEM_LEVEL_CALL_NUMBER_PREFIX_KEY))
       .withItemLevelCallNumberSuffix(itemRequest.getString(Item.ITEM_LEVEL_CALL_NUMBER_SUFFIX_KEY))
       .withItemLevelCallNumberTypeId(itemRequest.getString(Item.ITEM_LEVEL_CALL_NUMBER_TYPE_ID_KEY))
@@ -255,7 +255,7 @@ public final class ItemUtil {
       .withYearCaption(yearCaption)
       .withElectronicAccess(electronicAccess)
       .withStatisticalCodeIds(statisticalCodeIds)
-      .withPurchaseOrderLineidentifier(itemRequest.getString(Item.PURCHASE_ORDER_LINE_IDENTIFIER))
+      .withPurchaseOrderLineIdentifier(itemRequest.getString(Item.PURCHASE_ORDER_LINE_IDENTIFIER))
       .withLastCheckIn(LastCheckIn.from(itemRequest.getJsonObject(Item.LAST_CHECK_IN)))
       .withTags(tags);
   }
@@ -310,7 +310,7 @@ public final class ItemUtil {
     itemJson.put(Item.YEAR_CAPTION_KEY, item.getYearCaption());
     itemJson.put(Item.ELECTRONIC_ACCESS_KEY, item.getElectronicAccess());
     itemJson.put(Item.STATISTICAL_CODE_IDS_KEY, item.getStatisticalCodeIds());
-    itemJson.put(Item.PURCHASE_ORDER_LINE_IDENTIFIER, item.getPurchaseOrderLineidentifier());
+    itemJson.put(Item.PURCHASE_ORDER_LINE_IDENTIFIER, item.getPurchaseOrderLineIdentifier());
     itemJson.put(Item.TAGS_KEY, new JsonObject().put(Item.TAG_LIST_KEY, new JsonArray(item.getTags())));
 
     return itemJson;

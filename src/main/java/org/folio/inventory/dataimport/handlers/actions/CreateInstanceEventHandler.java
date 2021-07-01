@@ -2,7 +2,6 @@ package org.folio.inventory.dataimport.handlers.actions;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import org.folio.ActionProfile;
@@ -12,9 +11,6 @@ import org.folio.inventory.dataimport.handlers.matching.util.EventHandlingUtil;
 import org.folio.inventory.domain.instances.Instance;
 import org.folio.inventory.domain.instances.InstanceCollection;
 import org.folio.inventory.storage.Storage;
-import org.folio.inventory.storage.external.CollectionResourceClient;
-import org.folio.inventory.storage.external.CollectionResourceRepository;
-import org.folio.inventory.support.InstanceUtil;
 import org.folio.processing.exceptions.EventProcessingException;
 import org.folio.processing.mapping.MappingManager;
 
@@ -38,15 +34,19 @@ public class CreateInstanceEventHandler extends AbstractInstanceEventHandler {
 
   private static final String PAYLOAD_HAS_NO_DATA_MSG = "Failed to handle event payload - event payload context does not contain MARC_BIBLIOGRAPHIC data";
 
-  public CreateInstanceEventHandler(Storage storage, HttpClient client) {
-    this.storage = storage;
-    this.client = client;
+  private PrecedingSucceedingTitlesHelper precedingSucceedingTitlesHelper;
+
+  public CreateInstanceEventHandler(Storage storage, PrecedingSucceedingTitlesHelper precedingSucceedingTitlesHelper) {
+    super(storage);
+    this.precedingSucceedingTitlesHelper = precedingSucceedingTitlesHelper;
   }
 
   @Override
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     try {
+      dataImportEventPayload.setEventType(DI_INVENTORY_INSTANCE_CREATED.value());
+
       HashMap<String, String> payloadContext = dataImportEventPayload.getContext();
       if (payloadContext == null || payloadContext.isEmpty() ||
         isEmpty(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value())) ||
@@ -61,8 +61,6 @@ public class CreateInstanceEventHandler extends AbstractInstanceEventHandler {
       prepareEvent(dataImportEventPayload);
       defaultMapRecordToInstance(dataImportEventPayload);
       MappingManager.map(dataImportEventPayload);
-      CollectionResourceClient precedingSucceedingTitlesClient = createPrecedingSucceedingTitlesClient(context);
-      CollectionResourceRepository precedingSucceedingTitlesRepository = new CollectionResourceRepository(precedingSucceedingTitlesClient);
       JsonObject instanceAsJson = new JsonObject(dataImportEventPayload.getContext().get(INSTANCE.value()));
       if (instanceAsJson.getJsonObject(INSTANCE_PATH) != null) {
         instanceAsJson = instanceAsJson.getJsonObject(INSTANCE_PATH);
@@ -74,12 +72,11 @@ public class CreateInstanceEventHandler extends AbstractInstanceEventHandler {
       InstanceCollection instanceCollection = storage.getInstanceCollection(context);
       List<String> errors = EventHandlingUtil.validateJsonByRequiredFields(instanceAsJson, requiredFields);
       if (errors.isEmpty()) {
-        Instance mappedInstance = InstanceUtil.jsonToInstance(instanceAsJson);
+        Instance mappedInstance = Instance.fromJson(instanceAsJson);
         addInstance(mappedInstance, instanceCollection)
-          .compose(createdInstance -> createPrecedingSucceedingTitles(mappedInstance, precedingSucceedingTitlesRepository).map(createdInstance))
+          .compose(createdInstance -> precedingSucceedingTitlesHelper.createPrecedingSucceedingTitles(mappedInstance, context).map(createdInstance))
           .onSuccess(ar -> {
             dataImportEventPayload.getContext().put(INSTANCE.value(), Json.encode(ar));
-            dataImportEventPayload.setEventType(DI_INVENTORY_INSTANCE_CREATED.value());
             future.complete(dataImportEventPayload);
           })
           .onFailure(ar -> {

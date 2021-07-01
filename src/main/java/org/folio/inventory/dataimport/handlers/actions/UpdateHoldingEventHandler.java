@@ -2,9 +2,9 @@ package org.folio.inventory.dataimport.handlers.actions;
 
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.ActionProfile;
 import org.folio.DataImportEventPayload;
 import org.folio.HoldingsRecord;
@@ -31,7 +31,7 @@ import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.ACTI
 
 public class UpdateHoldingEventHandler implements EventHandler {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(UpdateHoldingEventHandler.class);
+  private static final Logger LOGGER = LogManager.getLogger(UpdateHoldingEventHandler.class);
 
   private static final String UPDATE_HOLDING_ERROR_MESSAGE = "Can`t update  holding";
   private static final String CONTEXT_EMPTY_ERROR_MESSAGE = "Can`t update Holding entity: context or Holding-entity are empty or doesn`t exist!";
@@ -48,6 +48,8 @@ public class UpdateHoldingEventHandler implements EventHandler {
   public CompletableFuture<DataImportEventPayload> handle(DataImportEventPayload dataImportEventPayload) {
     CompletableFuture<DataImportEventPayload> future = new CompletableFuture<>();
     try {
+      dataImportEventPayload.setEventType(DI_INVENTORY_HOLDING_UPDATED.value());
+
       if (dataImportEventPayload.getContext() == null
         || isEmpty(dataImportEventPayload.getContext().get(HOLDINGS.value()))
         || isEmpty(dataImportEventPayload.getContext().get(MARC_BIBLIOGRAPHIC.value()))) {
@@ -106,7 +108,7 @@ public class UpdateHoldingEventHandler implements EventHandler {
 
   private void constructDataImportEventPayload(CompletableFuture<DataImportEventPayload> future, DataImportEventPayload dataImportEventPayload, HoldingsRecord holding) {
     dataImportEventPayload.getContext().put(HOLDINGS.value(), Json.encodePrettily(holding));
-    dataImportEventPayload.setEventType(DI_INVENTORY_HOLDING_UPDATED.value());
+    future.complete(dataImportEventPayload);
     future.complete(dataImportEventPayload);
   }
 }

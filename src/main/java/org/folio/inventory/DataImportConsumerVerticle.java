@@ -5,9 +5,11 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClient;
+import io.vertx.core.http.HttpClientOptions;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventTypes;
 import org.folio.inventory.dataimport.consumers.DataImportKafkaHandler;
 import org.folio.inventory.storage.Storage;
@@ -17,6 +19,8 @@ import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
 import org.folio.kafka.KafkaTopicNameHelper;
 import org.folio.kafka.SubscriptionDefinition;
+import org.folio.kafka.cache.KafkaInternalCache;
+import org.folio.kafka.cache.util.CacheUtil;
 import org.folio.processing.events.EventManager;
 import org.folio.util.pubsub.PubSubClientUtils;
 
@@ -38,6 +42,7 @@ import static org.folio.DataImportEventTypes.DI_INVENTORY_ITEM_MATCHED;
 import static org.folio.DataImportEventTypes.DI_INVENTORY_ITEM_NOT_MATCHED;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED;
+import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
@@ -49,10 +54,16 @@ import static org.folio.inventory.dataimport.util.KafkaConfigConstants.OKAPI_URL
 
 public class DataImportConsumerVerticle extends AbstractVerticle {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DataImportConsumerVerticle.class);
+  private static final Logger LOGGER = LogManager.getLogger(DataImportConsumerVerticle.class);
+
+  private static final long DELAY_TIME_BETWEEN_EVENTS_CLEANUP_VALUE_MILLIS = 3600000;
+  private static final int EVENT_TIMEOUT_VALUE_HOURS = 3;
+  private static final int DEFAULT_HTTP_TIMEOUT_IN_MILLISECONDS = 3000;
+
   private static final List<DataImportEventTypes> EVENT_TYPES = List.of(DI_SRS_MARC_BIB_RECORD_CREATED,
     DI_SRS_MARC_BIB_RECORD_MODIFIED, DI_SRS_MARC_BIB_RECORD_MODIFIED_READY_FOR_POST_PROCESSING,
     DI_SRS_MARC_BIB_RECORD_MATCHED, DI_SRS_MARC_BIB_RECORD_NOT_MATCHED,
+    DI_SRS_MARC_BIB_RECORD_MATCHED_READY_FOR_POST_PROCESSING,
     DI_INVENTORY_INSTANCE_CREATED, DI_INVENTORY_INSTANCE_UPDATED,
     DI_INVENTORY_INSTANCE_MATCHED, DI_INVENTORY_INSTANCE_NOT_MATCHED,
     DI_INVENTORY_HOLDING_CREATED, DI_INVENTORY_HOLDING_UPDATED,
@@ -77,9 +88,16 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
     LOGGER.info(format("kafkaConfig: %s", kafkaConfig));
     EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, maxDistributionNumber);
 
-    HttpClient client = vertx.createHttpClient();
+    HttpClientOptions params = new HttpClientOptions().setConnectTimeout(DEFAULT_HTTP_TIMEOUT_IN_MILLISECONDS);
+    HttpClient client = vertx.createHttpClient(params);
     Storage storage = Storage.basedUpon(vertx, config, client);
-    DataImportKafkaHandler dataImportKafkaHandler = new DataImportKafkaHandler(vertx, storage, client);
+
+    KafkaInternalCache kafkaInternalCache = KafkaInternalCache.builder()
+      .kafkaConfig(kafkaConfig)
+      .build();
+    kafkaInternalCache.initKafkaCache();
+
+    DataImportKafkaHandler dataImportKafkaHandler = new DataImportKafkaHandler(vertx, storage, client, kafkaInternalCache);
 
     List<Future> futures = EVENT_TYPES.stream()
       .map(eventType -> createKafkaConsumerWrapper(kafkaConfig, eventType, dataImportKafkaHandler))
@@ -91,6 +109,8 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
         futures.forEach(future -> consumerWrappers.add((KafkaConsumerWrapper<String, String>) future.result()));
         startPromise.complete();
       });
+
+    CacheUtil.initCacheCleanupPeriodicTask(vertx, kafkaInternalCache, DELAY_TIME_BETWEEN_EVENTS_CLEANUP_VALUE_MILLIS, EVENT_TIMEOUT_VALUE_HOURS);
   }
 
   @Override

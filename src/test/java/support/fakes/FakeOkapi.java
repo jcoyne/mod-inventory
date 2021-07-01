@@ -1,7 +1,6 @@
 package support.fakes;
 
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpServer;
 import io.vertx.ext.web.Router;
@@ -88,6 +87,13 @@ public class FakeOkapi extends AbstractVerticle {
       .create().register(router);
 
     new FakeStorageModuleBuilder()
+      .withRecordName("bound-with part")
+      .withRootPath("/inventory-storage/bound-with-parts")
+      .withCollectionPropertyName("boundWithParts")
+      .withRequiredProperties("holdingsRecordId", "itemId")
+      .create().register(router);
+
+    new FakeStorageModuleBuilder()
       .withRecordName("preceding succeeding titles")
       .withRootPath("/preceding-succeeding-titles")
       .withCollectionPropertyName("precedingSucceedingTitles")
@@ -131,6 +137,7 @@ public class FakeOkapi extends AbstractVerticle {
         StorageRecordPreProcessors.setHridProcessor("it"),
         StorageRecordPreProcessors::setEffectiveLocationForItem,
         StorageRecordPreProcessors::setEffectiveCallNumberComponents,
+        StorageRecordPreProcessors::setEffectiveShelvingOrder,
         StorageRecordPreProcessors::setStatusDateProcessor
       )
       .create().register(router);

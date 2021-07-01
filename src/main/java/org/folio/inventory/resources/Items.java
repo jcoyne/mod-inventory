@@ -1,6 +1,5 @@
 package org.folio.inventory.resources;
 
-import static org.folio.HttpStatus.HTTP_CREATED;
 import static org.folio.HttpStatus.HTTP_OK;
 import static org.folio.inventory.common.FutureAssistance.allOf;
 import static org.folio.inventory.support.CqlHelper.multipleRecordsCqlQuery;
@@ -14,21 +13,18 @@ import java.io.UnsupportedEncodingException;
 import java.lang.invoke.MethodHandles;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import io.vertx.core.json.JsonArray;
 import org.folio.inventory.common.WebContext;
 import org.folio.inventory.common.api.request.PagingParameters;
 import org.folio.inventory.common.domain.MultipleRecords;
@@ -59,14 +55,16 @@ import org.folio.inventory.validation.ItemsValidator;
 
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.handler.BodyHandler;
 
+
 public class Items extends AbstractInventoryResource {
-  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  private static final Logger log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
   private static final String RELATIVE_ITEMS_PATH = "/inventory/items";
   private static final String RELATIVE_ITEMS_PATH_ID = RELATIVE_ITEMS_PATH+"/:id";
@@ -283,7 +281,7 @@ public class Items extends AbstractInventoryResource {
       }, FailureResponseConsumer.serverError(routingContext.response()));
   }
 
-  private void respondWithManyItems(
+  protected void respondWithManyItems(
     RoutingContext routingContext,
     WebContext context,
     MultipleRecords<Item> wrappedItems) {
@@ -293,6 +291,7 @@ public class Items extends AbstractInventoryResource {
     CollectionResourceClient materialTypesClient;
     CollectionResourceClient loanTypesClient;
     CollectionResourceClient locationsClient;
+    CollectionResourceClient boundWithPartsClient;
 
     try {
       OkapiHttpClient okapiClient = createHttpClient(routingContext, context);
@@ -301,6 +300,7 @@ public class Items extends AbstractInventoryResource {
       materialTypesClient = createMaterialTypesClient(okapiClient, context);
       loanTypesClient = createLoanTypesClient(okapiClient, context);
       locationsClient = createLocationsClient(okapiClient, context);
+      boundWithPartsClient = createBoundWithPartsClient(okapiClient, context);
     }
     catch (MalformedURLException e) {
       invalidOkapiUrlResponse(routingContext, context);
@@ -432,12 +432,16 @@ public class Items extends AbstractInventoryResource {
             locationsClient.get(id, newFuture::complete);
           });
 
+        CompletableFuture<Response> boundWithPartsFuture = getBoundWithPartsForMultipleItemsFuture(wrappedItems, boundWithPartsClient);
+        allFutures.add(boundWithPartsFuture);
+
         CompletableFuture<Void> allDoneFuture = allOf(allFutures);
 
         allDoneFuture.thenAccept(v -> {
           log.info("GET all items: all futures completed");
 
           try {
+
             Map<String, JsonObject> foundMaterialTypes
               = allMaterialTypeFutures.stream()
               .map(CompletableFuture::join)
@@ -459,10 +463,13 @@ public class Items extends AbstractInventoryResource {
               .map(Response::getJson)
               .collect(Collectors.toMap(r -> r.getString("id"), r -> r));
 
+            setBoundWithFlagsOnItems(wrappedItems, boundWithPartsFuture);
+
             JsonResponse.success(routingContext.response(),
               new ItemRepresentation(RELATIVE_ITEMS_PATH)
                 .toJson(wrappedItems, holdings, instances, foundMaterialTypes,
                   foundLoanTypes, foundLocations, context));
+
           } catch (Exception e) {
             ServerErrorResponse.internalError(routingContext.response(), e.toString());
           }
@@ -471,12 +478,84 @@ public class Items extends AbstractInventoryResource {
     });
   }
 
+  private CompletableFuture<Response> getBoundWithPartsForMultipleItemsFuture(
+    MultipleRecords<Item> wrappedItems,
+    CollectionResourceClient boundWithPartsClient)
+  {
+    CompletableFuture<Response> future = new CompletableFuture<>();
+
+    List<String> itemIds = wrappedItems.records.stream()
+      .map(Item::getId)
+      .collect(Collectors.toList());
+
+    String boundWithPartsByItemIdsQuery =
+      String.format("itemId==(%s)",
+        itemIds.stream()
+        .map(String::toString)
+        .collect(Collectors.joining(" or ")));
+
+    boundWithPartsByItemIdsQuery = URLEncoder
+      .encode(boundWithPartsByItemIdsQuery, StandardCharsets.UTF_8);
+
+    boundWithPartsClient.getMany(
+      boundWithPartsByItemIdsQuery,
+      itemIds.size(),
+      0,
+      future::complete);
+
+    return future;
+  }
+
+  private CompletableFuture<Response> getBoundWithPartsForItemFuture(
+    Item item,
+    CollectionResourceClient boundWithPartsClient)
+  {
+
+    CompletableFuture<Response> future = new CompletableFuture<>();
+
+    String boundWithPartsByItemIdQuery = String.format("itemId==(%s)",
+      item.getId());
+
+    boundWithPartsClient.getMany(
+      boundWithPartsByItemIdQuery,
+      1000,
+      0,
+      future::complete);
+
+    return future;
+  }
+
+
+  private void setBoundWithFlagsOnItems(MultipleRecords<Item> wrappedItems,
+                                        CompletableFuture<Response> boundWithPartsFuture) {
+
+    Response response = boundWithPartsFuture.join();
+    if (response != null && response.hasBody() && response.getStatusCode()==200) {
+      JsonArray boundWithParts = response.getJson().getJsonArray("boundWithParts");
+      if (boundWithParts != null && !boundWithParts.isEmpty()) {
+        Set<String> boundWithItemIds = boundWithParts
+          .stream()
+          .map(o -> ((JsonObject) o).getString("itemId"))
+          .collect(Collectors.toSet());
+
+        for (Item item : wrappedItems.records) {
+          if (boundWithItemIds.contains(item.getId())) {
+            item.withIsBoundWith(true);
+          }
+        }
+      }
+    } else {
+      log.error("Failed to retrieve bound-with parts, status code:  " + (response != null ? response.getStatusCode() : "null response"));
+    }
+
+  }
+
   private OkapiHttpClient createHttpClient(
     RoutingContext routingContext,
     WebContext context)
     throws MalformedURLException {
 
-    return new OkapiHttpClient(client, context,
+    return new OkapiHttpClient(WebClient.wrap(client), context,
       exception -> ServerErrorResponse.internalError(routingContext.response(),
       String.format("Failed to contact storage module: %s",
         exception.toString())));
@@ -531,6 +610,13 @@ public class Items extends AbstractInventoryResource {
     throws MalformedURLException {
 
     return createCollectionResourceClient(client, context, "/locations");
+  }
+
+  private CollectionResourceClient createBoundWithPartsClient(
+    OkapiHttpClient client,
+    WebContext webContext)
+    throws MalformedURLException {
+    return createCollectionResourceClient(client, webContext, "/inventory-storage/bound-with-parts");
   }
 
   private CollectionResourceClient createCollectionResourceClient(
@@ -596,6 +682,7 @@ public class Items extends AbstractInventoryResource {
     CollectionResourceClient materialTypesClient;
     CollectionResourceClient loanTypesClient;
     CollectionResourceClient locationsClient;
+    CollectionResourceClient boundWithPartsClient;
 
     try {
       OkapiHttpClient okapiClient = createHttpClient(routingContext, webContext);
@@ -604,6 +691,7 @@ public class Items extends AbstractInventoryResource {
       materialTypesClient = createMaterialTypesClient(okapiClient, webContext);
       loanTypesClient = createLoanTypesClient(okapiClient, webContext);
       locationsClient = createLocationsClient(okapiClient, webContext);
+      boundWithPartsClient = createBoundWithPartsClient(okapiClient, webContext);
     }
     catch (MalformedURLException e) {
       invalidOkapiUrlResponse(routingContext, webContext);
@@ -643,10 +731,19 @@ public class Items extends AbstractInventoryResource {
         CompletableFuture<Response> effectiveLocationFuture = getReferenceRecord(
           item.getEffectiveLocationId(), locationsClient, allFutures);
 
+        CompletableFuture<Response> boundWithPartsFuture =
+          getBoundWithPartsForItemFuture(item, boundWithPartsClient);
+
+        allFutures.add(boundWithPartsFuture);
+
+
+
         CompletableFuture<Void> allDoneFuture = allOf(allFutures);
 
         allDoneFuture.thenAccept(v -> {
           try {
+            int boundWithPartsCount = getTotalRecords(boundWithPartsFuture);
+            item.withIsBoundWith(boundWithPartsCount>0);
             JsonObject representation = includeReferenceRecordInformationInItem(
                       webContext, item, holding, instance,
                       materialTypeFuture,
@@ -676,6 +773,27 @@ public class Items extends AbstractInventoryResource {
       });
     });
   }
+
+  /**
+   *
+   * @param futureResponse response of a GET request for multiple records
+   * @return value of "totalRecords" from the response,
+   * or, -1 if the GET request was unsuccessful, if no JSON body was found
+   * in the response, or if the response did not contain a 'totalRecords'
+   * property (ie if it was a single record, getById response)
+   */
+  private int getTotalRecords (CompletableFuture<Response> futureResponse) {
+    Response response = futureResponse.join();
+    if (response.getStatusCode() == 200) {
+      JsonObject responseJson = response.getJson();
+      if (responseJson != null) {
+        if (responseJson.containsKey("totalRecords")) {
+          return responseJson.getInteger("totalRecords");
+        }
+      }
+    }
+    return -1;
+ }
 
   private void invalidOkapiUrlResponse(RoutingContext routingContext, WebContext context) {
     ServerErrorResponse.internalError(routingContext.response(),

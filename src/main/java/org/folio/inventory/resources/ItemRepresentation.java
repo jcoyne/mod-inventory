@@ -20,11 +20,11 @@ import org.folio.inventory.domain.items.Status;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 class ItemRepresentation {
-  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  private static final Logger log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
   private final String relativeItemsPath;
 
@@ -140,7 +140,7 @@ class ItemRepresentation {
     representation.put(Item.YEAR_CAPTION_KEY, item.getYearCaption());
     representation.put(Item.ELECTRONIC_ACCESS_KEY, item.getElectronicAccess());
     representation.put(Item.STATISTICAL_CODE_IDS_KEY, item.getStatisticalCodeIds());
-    representation.put(Item.PURCHASE_ORDER_LINE_IDENTIFIER, item.getPurchaseOrderLineidentifier());
+    representation.put(Item.PURCHASE_ORDER_LINE_IDENTIFIER, item.getPurchaseOrderLineIdentifier());
     includeReferenceIfPresent(representation, "materialType",
       item.getMaterialTypeId());
 
@@ -176,6 +176,12 @@ class ItemRepresentation {
         "effectiveCallNumberComponents",
         item.getEffectiveCallNumberComponents().toJson());
     }
+
+    if (item.getEffectiveShelvingOrder() != null) {
+      representation.put("effectiveShelvingOrder", item.getEffectiveShelvingOrder());
+    }
+
+    representation.put("isBoundWith", item.getIsBoundWith());
 
     return representation;
   }

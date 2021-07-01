@@ -40,6 +40,7 @@ public class Item {
   public static final String PURCHASE_ORDER_LINE_IDENTIFIER = "purchaseOrderLineIdentifier";
   public static final String LAST_CHECK_IN = "lastCheckIn";
   public static final String COPY_NUMBER_KEY = "copyNumber";
+  public static final String EFFECTIVE_SHELVING_ORDER_KEY = "effectiveShelvingOrder";
 
   public final String id;
   private String hrid;
@@ -71,6 +72,7 @@ public class Item {
   private final Status status;
   private final String materialTypeId;
   private final String permanentLoanTypeId;
+  private String effectiveShelvingOrder;
 
   private String temporaryLoanTypeId;
   private String permanentLocationId;
@@ -78,10 +80,12 @@ public class Item {
   private String effectiveLocationId;
   private List<ElectronicAccess> electronicAccess = new ArrayList<>();
   private List<String> statisticalCodeIds = new ArrayList<>();
-  private String purchaseOrderLineidentifier;
+  private String purchaseOrderLineIdentifier;
   private List<String> tags = new ArrayList<>();
   private LastCheckIn lastCheckIn;
   private EffectiveCallNumberComponents effectiveCallNumberComponents;
+
+  private boolean isBoundWith = false;
 
   private final JsonObject metadata;
 
@@ -102,6 +106,15 @@ public class Item {
 
   public String getId() {
     return id;
+  }
+
+  public String getEffectiveShelvingOrder() {
+    return effectiveShelvingOrder;
+  }
+
+  public Item withEffectiveShelvingOrder(String effectiveShelvingOrder) {
+    this.effectiveShelvingOrder = effectiveShelvingOrder;
+    return this;
   }
 
   public String getHrid() {
@@ -390,12 +403,12 @@ public class Item {
     return this;
   }
 
-  public String getPurchaseOrderLineidentifier() {
-    return purchaseOrderLineidentifier;
+  public String getPurchaseOrderLineIdentifier() {
+    return purchaseOrderLineIdentifier;
   }
 
-  public Item withPurchaseOrderLineidentifier(String purchaseOrderLineidentifier) {
-    this.purchaseOrderLineidentifier = purchaseOrderLineidentifier;
+  public Item withPurchaseOrderLineIdentifier(String purchaseOrderLineidentifier) {
+    this.purchaseOrderLineIdentifier = purchaseOrderLineidentifier;
     return this;
   }
 
@@ -426,6 +439,15 @@ public class Item {
 
   public Item withHoldingId(String holdingId) {
     this.holdingId = holdingId;
+    return this;
+  }
+
+  public boolean getIsBoundWith() {
+    return isBoundWith;
+  }
+
+  public Item withIsBoundWith(boolean boundWith) {
+    this.isBoundWith = boundWith;
     return this;
   }
 
@@ -471,7 +493,7 @@ public class Item {
             .withElectronicAccess(this.electronicAccess)
             .withStatisticalCodeIds(this.statisticalCodeIds)
             .withLastCheckIn(this.lastCheckIn)
-            .withPurchaseOrderLineidentifier(this.purchaseOrderLineidentifier);
+            .withPurchaseOrderLineIdentifier(this.purchaseOrderLineIdentifier);
   }
 
   public Item changeStatus(ItemStatusName newStatus) {
@@ -507,7 +529,8 @@ public class Item {
       .withYearCaption(this.yearCaption)
       .withElectronicAccess(this.electronicAccess)
       .withStatisticalCodeIds(this.statisticalCodeIds)
-      .withPurchaseOrderLineidentifier(purchaseOrderLineidentifier)
+      .withPurchaseOrderLineIdentifier(purchaseOrderLineIdentifier)
+      .withIsBoundWith(this.isBoundWith)
       .withTags(tags)
       .withCirculationNotes(circulationNotes);
   }

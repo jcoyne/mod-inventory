@@ -3,8 +3,8 @@ package org.folio.inventory.dataimport.handlers.actions;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.inventory.common.Context;
 import org.folio.inventory.domain.instances.Instance;
 import org.folio.inventory.domain.instances.InstanceCollection;
@@ -21,7 +21,7 @@ import static java.lang.String.format;
 
 public class InstanceUpdateDelegate {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(InstanceUpdateDelegate.class);
+  private static final Logger LOGGER = LogManager.getLogger(InstanceUpdateDelegate.class);
 
   private static final String MAPPING_RULES_KEY = "MAPPING_RULES";
   private static final String MAPPING_PARAMS_KEY = "MAPPING_PARAMS";
@@ -74,14 +74,13 @@ public class InstanceUpdateDelegate {
       JsonObject existing = JsonObject.mapFrom(existingInstance);
       JsonObject mapped = JsonObject.mapFrom(mappedInstance);
       JsonObject mergedInstanceAsJson = InstanceUtil.mergeInstances(existing, mapped);
-      Instance mergedInstance = InstanceUtil.jsonToInstance(mergedInstanceAsJson);
+      Instance mergedInstance = Instance.fromJson(mergedInstanceAsJson);
       return Future.succeededFuture(mergedInstance);
     } catch (Exception e) {
       LOGGER.error("Error updating instance", e);
       return Future.failedFuture(e);
     }
   }
-
 
   private Future<Instance> updateInstanceInStorage(Instance instance, InstanceCollection instanceCollection) {
     Promise<Instance> promise = Promise.promise();

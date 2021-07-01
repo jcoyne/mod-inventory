@@ -7,18 +7,17 @@ import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import io.vertx.ext.web.Router;
 import org.folio.inventory.common.WebRequestDiagnostics;
 import org.folio.inventory.domain.ingest.IngestMessageProcessor;
-import org.folio.inventory.resources.EventHandlers;
 import org.folio.inventory.resources.Instances;
 import org.folio.inventory.resources.InstancesBatch;
 import org.folio.inventory.resources.IsbnUtilsApi;
 import org.folio.inventory.resources.Items;
+import org.folio.inventory.resources.ItemsByHoldingsRecordId;
 import org.folio.inventory.resources.MoveApi;
-import org.folio.inventory.resources.TenantApi;
 import org.folio.inventory.resources.ingest.ModsIngestion;
 import org.folio.inventory.storage.Storage;
 
@@ -31,7 +30,7 @@ public class InventoryVerticle extends AbstractVerticle {
   public void start(Promise<Void> started) {
     Logging.initialiseFormat();
 
-    final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    final Logger log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
     Router router = Router.router(vertx);
 
@@ -58,8 +57,7 @@ public class InventoryVerticle extends AbstractVerticle {
     new Instances(storage, client).register(router);
     new InstancesBatch(storage, client).register(router);
     new IsbnUtilsApi().register(router);
-    new TenantApi().register(router);
-    new EventHandlers(storage).register(router);
+    new ItemsByHoldingsRecordId(storage, client).register(router);
 
     Handler<AsyncResult<HttpServer>> onHttpServerStart = result -> {
       if (result.succeeded()) {
@@ -76,7 +74,7 @@ public class InventoryVerticle extends AbstractVerticle {
 
   @Override
   public void stop(Promise<Void> stopped) {
-    final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+    final Logger log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
     log.info("Stopping inventory module");
     server.close(result -> {

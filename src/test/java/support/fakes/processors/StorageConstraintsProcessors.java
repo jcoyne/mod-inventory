@@ -1,28 +1,32 @@
 package support.fakes.processors;
 
-import static api.ApiTestSuite.createOkapiHttpClient;
-import static api.support.http.StorageInterfaceUrls.instanceRelationshipTypeUrl;
-import static api.support.http.StorageInterfaceUrls.instancesStorageUrl;
-import static java.util.function.Function.identity;
-import static org.folio.inventory.support.JsonArrayHelper.toList;
-
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
-
+import api.ApiTestSuite;
+import api.support.http.StorageInterfaceUrls;
+import io.vertx.core.json.JsonObject;
 import org.folio.inventory.domain.instances.InstanceRelationship;
 import org.folio.inventory.domain.instances.titles.PrecedingSucceedingTitle;
 import org.folio.inventory.exceptions.UnprocessableEntityException;
 import org.folio.inventory.support.http.client.Response;
-import org.folio.inventory.support.http.client.ResponseHandler;
 import org.folio.inventory.support.http.server.ValidationError;
 import org.folio.util.StringUtil;
 
-import io.vertx.core.json.JsonObject;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
+
+import static api.ApiTestSuite.createOkapiHttpClient;
+import static api.support.http.StorageInterfaceUrls.instanceRelationshipTypeUrl;
+import static api.support.http.StorageInterfaceUrls.instancesStorageUrl;
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.function.Function.identity;
+import static org.folio.inventory.support.JsonArrayHelper.toList;
 
 public final class StorageConstraintsProcessors {
 
@@ -87,7 +91,7 @@ public final class StorageConstraintsProcessors {
             relationship.succeedingInstanceId));
         }
 
-        return CompletableFuture.completedFuture(newRelationship);
+        return completedFuture(newRelationship);
       });
   }
 
@@ -108,10 +112,6 @@ public final class StorageConstraintsProcessors {
   }
 
   private static CompletableFuture<Response> get(URL url) throws MalformedURLException {
-    final CompletableFuture<Response> result = new CompletableFuture<>();
-
-    createOkapiHttpClient().get(url, ResponseHandler.any(result));
-
-    return result;
+    return createOkapiHttpClient().get(url).toCompletableFuture();
   }
 }
