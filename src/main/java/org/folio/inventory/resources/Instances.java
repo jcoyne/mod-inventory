@@ -61,6 +61,7 @@ public class Instances extends AbstractInstances {
   private static final String BLOCKED_FIELDS_CONFIG_PATH = INVENTORY_PATH + "/config/instances/blocked-fields";
   private static final String BLOCKED_FIELDS_UPDATE_ERROR_MESSAGE = "Instance is controlled by MARC record, "
     + "these fields are blocked and can not be updated: ";
+  private static final String ID = "id";
 
   public Instances(final Storage storage, final HttpClient client) {
     super(storage, client);
@@ -195,9 +196,7 @@ public class Instances extends AbstractInstances {
       .thenCompose(InstancePrecedingSucceedingTitleValidators::refuseWhenUnconnectedHasNoTitle)
       .thenCompose(instance -> instanceCollection.findById(rContext.request().getParam("id")))
       .thenCompose(InstancesValidators::refuseWhenInstanceNotFound)
-//      .thenCompose(existingInstance -> fetchInstanceRelationships(new Success<>(existingInstance), rContext, wContext))
       .thenCompose(existingInstance -> fetchPrecedingSucceedingTitles(new Success<>(existingInstance), rContext, wContext))
-//      .thenCompose(existingInstance -> setBoundWithFlag(new Success<>(existingInstance), rContext, wContext))
       .thenCompose(existingInstance -> refuseWhenBlockedFieldsChanged(existingInstance, updatedInstance))
       .thenCompose(existingInstance -> refuseWhenHridChanged(existingInstance, updatedInstance))
       .thenAccept(existingInstance -> updateInstance(updatedInstance, rContext, wContext))
@@ -278,8 +277,8 @@ public class Instances extends AbstractInstances {
     JsonObject existingInstanceJson = JsonObject.mapFrom(existingInstance);
     JsonObject updatedInstanceJson = JsonObject.mapFrom(updatedInstance);
 
-    zeroingFields(existingInstanceJson.getJsonArray("precedingTitles"));
-    zeroingFields(existingInstanceJson.getJsonArray("succeedingTitles"));
+    zeroingFields(existingInstanceJson.getJsonArray(Instance.PRECEDING_TITLES_KEY));
+    zeroingFields(existingInstanceJson.getJsonArray(Instance.SUCCEEDING_TITLES_KEY));
 
     Map<String, Object> existingBlockedFields = new HashMap<>();
     Map<String, Object> updatedBlockedFields = new HashMap<>();
@@ -294,10 +293,11 @@ public class Instances extends AbstractInstances {
     if (precedingSucceedingTitles.isEmpty()) {
       return;
     }
-    for (int i = 0; i < precedingSucceedingTitles.size(); i++) {
-      JsonObject jsonObject = precedingSucceedingTitles.getJsonObject(i);
-      jsonObject.put("precedingInstanceId", null);
-      jsonObject.put("succeedingInstanceId", null);
+    for (int index = 0; index < precedingSucceedingTitles.size(); index++) {
+      JsonObject jsonObject = precedingSucceedingTitles.getJsonObject(index);
+      jsonObject.put(ID, null);
+      jsonObject.put(PrecedingSucceedingTitle.PRECEDING_INSTANCE_ID_KEY, null);
+      jsonObject.put(PrecedingSucceedingTitle.SUCCEEDING_INSTANCE_ID_KEY, null);
     }
   }
 
@@ -400,7 +400,7 @@ public class Instances extends AbstractInstances {
     String instanceId, RoutingContext routingContext, WebContext webContext ) {
     CompletableFuture<Response> holdingsFuture = new CompletableFuture<>();
 
-    createHoldingsStorageClient(routingContext, webContext).getMany("query=instanceId=="+instanceId, holdingsFuture::complete);
+    createHoldingsStorageClient(routingContext, webContext).getAll("instanceId=="+instanceId, holdingsFuture::complete);
     return holdingsFuture.thenCompose(
       response -> {
         List<String> holdingsRecordsList =
@@ -538,7 +538,7 @@ public class Instances extends AbstractInstances {
     if (relatedInstancesClient != null) {
       CompletableFuture<Response> relatedInstancesFetched = new CompletableFuture<>();
 
-      relatedInstancesClient.getMany(query, relatedInstancesFetched::complete);
+      relatedInstancesClient.getMany(query, Integer.MAX_VALUE, 0, relatedInstancesFetched::complete);
 
       return relatedInstancesFetched
         .thenCompose(response -> withInstanceRelationships(instance, response));
@@ -601,7 +601,7 @@ public class Instances extends AbstractInstances {
 
     CompletableFuture<Response> precedingSucceedingTitlesFetched = new CompletableFuture<>();
 
-    precedingSucceedingTitlesClient.getMany(queryForPrecedingSucceedingInstances, precedingSucceedingTitlesFetched::complete);
+    precedingSucceedingTitlesClient.getAll(queryForPrecedingSucceedingInstances, precedingSucceedingTitlesFetched::complete);
 
     return precedingSucceedingTitlesFetched
       .thenCompose(response ->
