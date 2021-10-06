@@ -4,7 +4,7 @@
   "provides": [
     {
       "id": "inventory",
-      "version": "10.12",
+      "version": "11.0",
       "handlers": [
         {
           "methods": ["GET"],
@@ -358,7 +358,8 @@
             "inventory-storage.instances.item.get",
             "inventory-storage.preceding-succeeding-titles.collection.get",
             "inventory-storage.instance-relationships.collection.get",
-            "inventory-storage.bound-with-parts.collection.get"
+            "inventory-storage.bound-with-parts.collection.get",
+            "inventory-storage.holdings.collection.get"
           ]
         }, {
           "methods": ["POST"],
@@ -430,7 +431,7 @@
     },
     {
       "id": "inventory-batch",
-      "version": "0.5",
+      "version": "1.0",
       "handlers": [
         {
           "methods": ["POST"],
@@ -456,12 +457,18 @@
     },
     {
       "id": "inventory-config",
-      "version": "0.1",
+      "version": "0.2",
       "handlers": [
         {
           "methods": ["GET"],
           "pathPattern": "/inventory/config/instances/blocked-fields",
           "permissionsRequired": ["inventory.config.instances.blocked-fields.get"],
+          "modulePermissions": []
+        },
+        {
+          "methods": ["GET"],
+          "pathPattern": "/inventory/config/holdings/blocked-fields",
+          "permissionsRequired": ["inventory.config.holdings.blocked-fields.get"],
           "modulePermissions": []
         }
       ]
@@ -520,19 +527,19 @@
   "requires": [
     {
       "id": "item-storage",
-      "version": "8.9"
+      "version": "8.9 9.0"
     },
     {
       "id": "instance-storage",
-      "version": "7.8"
+      "version": "7.8 8.0"
     },
     {
       "id": "instance-storage-batch",
-      "version": "0.2"
+      "version": "0.2 1.0"
     },
     {
       "id": "holdings-storage",
-      "version": "2.0 3.0 4.0"
+      "version": "2.0 3.0 4.0 5.0"
     },
     {
       "id": "material-types",
@@ -577,6 +584,16 @@
     {
       "id": "bound-with-parts-storage",
       "version": "1.0"
+    }
+  ],
+  "optional": [
+    {
+      "id": "mapping-metadata-provider",
+      "version": "1.0"
+    },
+    {
+      "id": "data-import-converter-storage",
+      "version": "1.2"
     }
   ],
   "permissionSets": [
@@ -717,6 +734,11 @@
       "description": "Get configuration for blocked fields of instances"
     },
     {
+      "permissionName": "inventory.config.holdings.blocked-fields.get",
+      "displayName": "Inventory - get configuration for blocked fields of holdings",
+      "description": "Get configuration for blocked fields of holdings"
+    },
+    {
       "permissionName": "inventory.all",
       "displayName": "Inventory - all permissions",
       "description": "Entire set of permissions needed to use the inventory",
@@ -737,6 +759,7 @@
         "inventory.ingest.mods.post",
         "inventory.ingest.mods.status.get",
         "inventory.config.instances.blocked-fields.get",
+        "inventory.config.holdings.blocked-fields.get",
         "inventory.items.item.mark-withdrawn.post",
         "inventory.items.item.mark-in-process.post",
         "inventory.items.item.mark-in-process-non-requestable.post",

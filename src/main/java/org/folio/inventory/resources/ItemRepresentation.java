@@ -98,6 +98,7 @@ class ItemRepresentation {
 
     JsonObject representation = new JsonObject();
     representation.put("id", item.id);
+    includeIfPresent(representation, "_version", item.getVersion());
 
     representation.put(Item.STATUS_KEY,
       converterForClass(Status.class).toJson(item.getStatus()));
@@ -112,6 +113,8 @@ class ItemRepresentation {
     includeIfPresent(representation, "title", instance, i -> i.getString("title"));
     includeIfPresent(representation, "callNumber", holding, h -> h.getString("callNumber"));
     includeIfPresent(representation, Item.HRID_KEY, item.getHrid());
+    includeIfPresent(representation, Item.TRANSIT_DESTINATION_SERVICE_POINT_ID_KEY,
+      item.getInTransitDestinationServicePointId());
     representation.put("contributorNames", contributorNames);
     representation.put(Item.FORMER_IDS_KEY, item.getFormerIds());
     representation.put(Item.DISCOVERY_SUPPRESS_KEY, item.getDiscoverySuppress());

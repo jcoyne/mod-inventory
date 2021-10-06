@@ -1,182 +1,195 @@
 package org.folio.inventory.dataimport.consumers;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static org.folio.inventory.dataimport.consumers.MarcHoldingsRecordHridSetKafkaHandler.JOB_EXECUTION_ID_KEY;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_TENANT_HEADER;
+import static org.folio.rest.util.OkapiConnectionParams.OKAPI_URL_HEADER;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.when;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Consumer;
+
+import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.common.Slf4jNotifier;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.github.tomakehurst.wiremock.junit.WireMockRule;
+import com.github.tomakehurst.wiremock.matching.RegexPattern;
+import com.github.tomakehurst.wiremock.matching.UrlPathPattern;
 import io.vertx.core.Future;
+import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.kafka.client.consumer.KafkaConsumerRecord;
-import org.folio.DataImportEventPayload;
-import org.folio.HoldingsRecord;
-import org.folio.MappingProfile;
-import org.folio.ParsedRecord;
-import org.folio.Record;
-import org.folio.inventory.common.Context;
-import org.folio.inventory.common.domain.Success;
-import org.folio.inventory.dataimport.HoldingWriterFactory;
-import org.folio.inventory.dataimport.handlers.actions.HoldingsRecordUpdateDelegate;
-import org.folio.inventory.domain.HoldingsRecordCollection;
-import org.folio.inventory.storage.Storage;
-import org.folio.kafka.cache.KafkaInternalCache;
-import org.folio.processing.events.utils.ZIPArchiver;
-import org.folio.processing.mapping.MappingManager;
-import org.folio.processing.mapping.mapper.reader.record.marc.MarcHoldingsReaderFactory;
-import org.folio.rest.jaxrs.model.EntityType;
-import org.folio.rest.jaxrs.model.Event;
-import org.folio.rest.jaxrs.model.MappingDetail;
-import org.folio.rest.jaxrs.model.MappingRule;
-import org.folio.rest.jaxrs.model.ProfileSnapshotWrapper;
-import org.junit.Assert;
+import io.vertx.kafka.client.producer.KafkaHeader;
+import org.folio.inventory.dataimport.cache.MappingMetadataCache;
+import org.folio.processing.mapping.defaultmapper.processor.parameters.MappingParameters;
+import org.folio.MappingMetadataDto;
+import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
-import java.io.IOException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.UUID;
-import java.util.function.Consumer;
-
-import static org.folio.ActionProfile.FolioRecord.HOLDINGS;
-import static org.folio.ActionProfile.FolioRecord.MARC_HOLDINGS;
-import static org.folio.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET;
-import static org.folio.rest.jaxrs.model.ProfileSnapshotWrapper.ContentType.MAPPING_PROFILE;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.when;
+import org.folio.HoldingsRecord;
+import org.folio.inventory.TestUtil;
+import org.folio.inventory.common.Context;
+import org.folio.inventory.common.domain.Success;
+import org.folio.inventory.dataimport.handlers.actions.HoldingsUpdateDelegate;
+import org.folio.inventory.domain.HoldingsRecordCollection;
+import org.folio.inventory.storage.Storage;
+import org.folio.kafka.cache.KafkaInternalCache;
+import org.folio.rest.jaxrs.model.Event;
+import org.folio.rest.jaxrs.model.Record;
 
 @RunWith(VertxUnitRunner.class)
 public class MarcHoldingsRecordHridSetKafkaHandlerTest {
 
-  private final String parsedRecord = "{ \"leader\":\"01314nam  22003851a 4500\", \"fields\":[ {\"001\":\"009221\"}, { \"042\": { \"ind1\": \" \", \"ind2\": \" \", \"subfields\": [ { \"3\": \"test\" } ] } }, { \"042\": { \"ind1\": \" \", \"ind2\": \" \", \"subfields\": [ { \"a\": \"pcc\" } ] } }, { \"042\": { \"ind1\": \" \", \"ind2\": \" \", \"subfields\": [ { \"a\": \"pcc\" } ] } }, { \"245\":\"American Bar Association journal\" } ] }";
-  private final String incomingSrsRecord = JsonObject.mapFrom(new Record().withParsedRecord(new ParsedRecord().withContent(parsedRecord))).encode();
-  private final String existingHoldingsRecord = "{ \"id\": \"4d21d6ee-695b-441e-8f7a-e57b8eb940cb\", \"hrid\": \"ho00000000001\", \"instanceId\": \"ddd266ef-07ac-4117-be13-d418b8cd6902\", \"callNumber\": \"99101245\", \"copyNumber\": \"si990183\", \"numberOfItems\": \"2\" }\n";
+  private static final String MAPPING_RULES_PATH = "src/test/resources/handlers/holdings-rules.json";
+  private static final String RECORD_PATH = "src/test/resources/handlers/holdings-record.json";
+  private static final String HOLDINGS_PATH = "src/test/resources/handlers/holdings.json";
+  private static final String MAPPING_METADATA_URL = "/mapping-metadata";
 
   @Mock
-  private Storage storageMock;
+  private Storage mockedStorage;
   @Mock
-  private HoldingsRecordCollection holdingsRecordCollectionMock;
+  private HoldingsRecordCollection mockedHoldingsCollection;
   @Mock
-  private KafkaConsumerRecord<String, String> kafkaRecordMock;
+  private KafkaConsumerRecord<String, String> kafkaRecord;
   @Mock
-  private KafkaInternalCache kafkaInternalCacheMock;
-  private MarcHoldingsRecordHridSetKafkaHandler handler;
+  private KafkaInternalCache kafkaInternalCache;
 
-  private final MappingProfile mappingProfile = new MappingProfile()
-    .withId(UUID.randomUUID().toString())
-    .withName("Map Holding records from MARC Holdings")
-    .withIncomingRecordType(EntityType.MARC_HOLDINGS)
-    .withExistingRecordType(EntityType.HOLDINGS)
-    .withMappingDetails(new MappingDetail()
-      .withMappingFields(Collections.singletonList(
-        new MappingRule().withPath("callNumber").withValue("042$3").withEnabled("true"))));
-  private final ProfileSnapshotWrapper profileSnapshotWrapper = new ProfileSnapshotWrapper()
-    .withContentType(MAPPING_PROFILE)
-    .withContent(JsonObject.mapFrom(mappingProfile).getMap());
+  @Rule
+  public WireMockRule mockServer = new WireMockRule(
+    WireMockConfiguration.wireMockConfig()
+      .dynamicPort()
+      .notifier(new Slf4jNotifier(true)));
+
+  private JsonObject mappingRules;
+  private org.folio.rest.jaxrs.model.Record record;
+  private HoldingsRecord existingHoldingsRecord;
+  private MarcHoldingsRecordHridSetKafkaHandler marcHoldingsRecordHridSetKafkaHandler;
+  private AutoCloseable mocks;
+  private Vertx vertx = Vertx.vertx();
+  private List<KafkaHeader> okapiHeaders;
 
   @Before
-  public void setUp() {
-    MockitoAnnotations.initMocks(this);
-    MappingManager.registerReaderFactory(new MarcHoldingsReaderFactory());
-    MappingManager.registerWriterFactory(new HoldingWriterFactory());
+  public void setUp() throws IOException {
+    mappingRules = new JsonObject(TestUtil.readFileFromPath(MAPPING_RULES_PATH));
+    existingHoldingsRecord = new JsonObject(TestUtil.readFileFromPath(HOLDINGS_PATH)).mapTo(HoldingsRecord.class);
+    record = Json.decodeValue(TestUtil.readFileFromPath(RECORD_PATH), Record.class);
+    record.getParsedRecord().withContent(JsonObject.mapFrom(record.getParsedRecord().getContent()).encode());
 
-    when(storageMock.getHoldingsRecordCollection(any(Context.class))).thenReturn(holdingsRecordCollectionMock);
+    mocks = MockitoAnnotations.openMocks(this);
+    when(mockedStorage.getHoldingsRecordCollection(any(Context.class))).thenReturn(mockedHoldingsCollection);
+
     doAnswer(invocationOnMock -> {
-      HoldingsRecord existingRecord = new JsonObject(existingHoldingsRecord).mapTo(HoldingsRecord.class);
       Consumer<Success<HoldingsRecord>> successHandler = invocationOnMock.getArgument(1);
-      successHandler.accept(new Success<>(existingRecord));
+      successHandler.accept(new Success<>(existingHoldingsRecord));
       return null;
-    }).when(holdingsRecordCollectionMock).findById(anyString(), any(), any());
+    }).when(mockedHoldingsCollection).findById(anyString(), any(), any());
+
     doAnswer(invocationOnMock -> {
       HoldingsRecord holdingsRecord = invocationOnMock.getArgument(0);
       Consumer<Success<HoldingsRecord>> successHandler = invocationOnMock.getArgument(1);
       successHandler.accept(new Success<>(holdingsRecord));
       return null;
-    }).when(holdingsRecordCollectionMock).update(any(HoldingsRecord.class), any(), any());
-    Mockito.when(kafkaRecordMock.key()).thenReturn("testKey");
+    }).when(mockedHoldingsCollection).update(any(HoldingsRecord.class), any(), any());
 
-    this.handler = new MarcHoldingsRecordHridSetKafkaHandler(new HoldingsRecordUpdateDelegate(storageMock), kafkaInternalCacheMock);
+    WireMock.stubFor(get(new UrlPathPattern(new RegexPattern(MAPPING_METADATA_URL + "/.*"), true))
+      .willReturn(WireMock.ok().withBody(Json.encode(new MappingMetadataDto()
+        .withMappingParams(Json.encode(new MappingParameters()))
+        .withMappingRules(mappingRules.encode())))));
+
+    MappingMetadataCache mappingMetadataCache = new MappingMetadataCache(vertx, vertx.createHttpClient(), 3600);
+    marcHoldingsRecordHridSetKafkaHandler =
+      new MarcHoldingsRecordHridSetKafkaHandler(new HoldingsUpdateDelegate(mockedStorage), kafkaInternalCache, mappingMetadataCache);
+
+    this.okapiHeaders = List.of(
+      KafkaHeader.header(OKAPI_TENANT_HEADER, "diku"),
+      KafkaHeader.header(OKAPI_URL_HEADER, mockServer.baseUrl()));
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    mocks.close();
   }
 
   @Test
-  public void shouldMapHoldingAndReturnSucceededFuture(TestContext testContext) throws IOException {
+  public void shouldReturnSucceededFutureWithObtainedRecordKey(TestContext context) {
     // given
-    Async async = testContext.async();
+    Async async = context.async();
+    Map<String, String> payload = new HashMap<>();
+    payload.put(JOB_EXECUTION_ID_KEY, UUID.randomUUID().toString());
+    payload.put("MARC_HOLDINGS", Json.encode(record));
 
-    HashMap<String, String> context = new HashMap<>();
-    context.put("holdingsId", UUID.randomUUID().toString());
-    context.put(MARC_HOLDINGS.value(), incomingSrsRecord);
-    context.put(HOLDINGS.value(), "{}");
+    Event event = new Event().withId("01").withEventPayload(Json.encode(payload));
+    String expectedKafkaRecordKey = "test_key";
+    when(kafkaRecord.key()).thenReturn(expectedKafkaRecordKey);
+    when(kafkaRecord.value()).thenReturn(Json.encode(event));
+    when(kafkaRecord.headers()).thenReturn(okapiHeaders);
 
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET.value())
-      .withContext(context)
-      .withCurrentNode(profileSnapshotWrapper);
-    Event event = new Event().withId("01").withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
-    when(kafkaRecordMock.value()).thenReturn(Json.encode(event));
-    when(kafkaInternalCacheMock.containsByKey("01")).thenReturn(false);
+    when(kafkaInternalCache.containsByKey("01")).thenReturn(false);
 
     // when
-    Future<String> future = handler.handle(kafkaRecordMock);
+    Future<String> future = marcHoldingsRecordHridSetKafkaHandler.handle(kafkaRecord);
 
     // then
     future.onComplete(ar -> {
-      Assert.assertTrue(ar.succeeded());
-      Assert.assertEquals("testKey", ar.result());
-      async.complete();
-    });
-  }
-
-
-  @Test
-  public void shouldNotHandleIfCacheAlreadyContainsTheEvent(TestContext testContext) throws IOException {
-    // given
-    Async async = testContext.async();
-
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload();
-    Event event = new Event().withId("01").withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
-    when(kafkaRecordMock.value()).thenReturn(Json.encode(event));
-    when(kafkaInternalCacheMock.containsByKey("01")).thenReturn(true);
-
-    // when
-    Future<String> future = handler.handle(kafkaRecordMock);
-
-    // then
-    future.onComplete(ar -> {
-      Assert.assertTrue(ar.succeeded());
-      Assert.assertNull(ar.result());
+      context.assertTrue(ar.succeeded());
+      context.assertEquals(expectedKafkaRecordKey, ar.result());
       async.complete();
     });
   }
 
   @Test
-  public void shouldReturnFailedFutureWhenPayloadHasNoSrsMarcHoldingsRecord(TestContext testContext) throws IOException {
+  public void shouldReturnFailedFutureWhenPayloadHasNoMarcRecord(TestContext context) {
     // given
-    Async async = testContext.async();
+    Async async = context.async();
+    Map<String, String> payload = new HashMap<>();
+    payload.put(JOB_EXECUTION_ID_KEY, UUID.randomUUID().toString());
 
-    HashMap<String, String> context = new HashMap<>();
-    context.put("holdingsId", UUID.randomUUID().toString());
-    context.put(HOLDINGS.value(), "{}");
+    Event event = new Event().withId("01").withEventPayload(Json.encode(payload));
+    when(kafkaRecord.value()).thenReturn(Json.encode(event));
 
-    DataImportEventPayload dataImportEventPayload = new DataImportEventPayload()
-      .withEventType(DI_SRS_MARC_HOLDINGS_HOLDING_HRID_SET.value())
-      .withContext(context)
-      .withCurrentNode(profileSnapshotWrapper);
-    Event event = new Event().withId("01").withEventPayload(ZIPArchiver.zip(Json.encode(dataImportEventPayload)));
-    when(kafkaRecordMock.value()).thenReturn(Json.encode(event));
-    when(kafkaInternalCacheMock.containsByKey("01")).thenReturn(false);
+    when(kafkaInternalCache.containsByKey("01")).thenReturn(false);
 
     // when
-    Future<String> future = handler.handle(kafkaRecordMock);
+    Future<String> future = marcHoldingsRecordHridSetKafkaHandler.handle(kafkaRecord);
 
     // then
     future.onComplete(ar -> {
-      Assert.assertTrue(ar.failed());
+      context.assertTrue(ar.failed());
+      async.complete();
+    });
+  }
+
+  @Test
+  public void shouldReturnFailedFutureWhenPayloadCanNotBeMapped(TestContext context) {
+    // given
+    Async async = context.async();
+    Event event = new Event().withId("01").withEventPayload(null);
+    when(kafkaRecord.value()).thenReturn(Json.encode(event));
+
+    when(kafkaInternalCache.containsByKey("01")).thenReturn(false);
+
+    // when
+    Future<String> future = marcHoldingsRecordHridSetKafkaHandler.handle(kafkaRecord);
+
+    // then
+    future.onComplete(ar -> {
+      context.assertTrue(ar.failed());
       async.complete();
     });
   }

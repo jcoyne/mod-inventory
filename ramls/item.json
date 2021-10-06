@@ -7,6 +7,10 @@
       "description": "Item id",
       "type": "string"
     },
+    "_version": {
+      "type": "integer",
+      "description": "Record version for optimistic locking"
+    },
     "hrid": {
       "type": "string",
       "description": "The human readable ID, also called eye readable ID. A system-assigned sequential alternate ID"
@@ -461,6 +465,11 @@
           "uri"
         ]
       }
+    },
+    "inTransitDestinationServicePointId": {
+      "description": "Service point an item is intended to be transited to (should only be present when in transit)",
+      "type": "string",
+      "$ref": "uuid.json"
     },
     "statisticalCodeIds": {
       "type": "array",

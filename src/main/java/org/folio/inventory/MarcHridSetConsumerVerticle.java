@@ -5,12 +5,14 @@ import io.vertx.core.CompositeFuture;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonObject;
+import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.DataImportEventTypes;
+import org.folio.inventory.dataimport.cache.MappingMetadataCache;
 import org.folio.inventory.dataimport.consumers.MarcBibInstanceHridSetKafkaHandler;
 import org.folio.inventory.dataimport.consumers.MarcHoldingsRecordHridSetKafkaHandler;
-import org.folio.inventory.dataimport.handlers.actions.HoldingsRecordUpdateDelegate;
+import org.folio.inventory.dataimport.handlers.actions.HoldingsUpdateDelegate;
 import org.folio.inventory.dataimport.handlers.actions.InstanceUpdateDelegate;
 import org.folio.inventory.storage.Storage;
 import org.folio.kafka.GlobalLoadSensor;
@@ -61,14 +63,17 @@ public class MarcHridSetConsumerVerticle extends AbstractVerticle {
     HttpClient client = vertx.createHttpClient();
     Storage storage = Storage.basedUpon(vertx, config, client);
     InstanceUpdateDelegate instanceUpdateDelegate = new InstanceUpdateDelegate(storage);
-    HoldingsRecordUpdateDelegate holdingsRecordUpdateDelegate = new HoldingsRecordUpdateDelegate(storage);
+    HoldingsUpdateDelegate holdingsRecordUpdateDelegate = new HoldingsUpdateDelegate(storage);
 
     KafkaInternalCache kafkaInternalCache = KafkaInternalCache.builder()
       .kafkaConfig(kafkaConfig).build();
     kafkaInternalCache.initKafkaCache();
 
-    MarcBibInstanceHridSetKafkaHandler marcBibInstanceHridSetKafkaHandler = new MarcBibInstanceHridSetKafkaHandler(instanceUpdateDelegate, kafkaInternalCache);
-    MarcHoldingsRecordHridSetKafkaHandler marcHoldingsRecordHridSetKafkaHandler = new MarcHoldingsRecordHridSetKafkaHandler(holdingsRecordUpdateDelegate, kafkaInternalCache);
+    String mappingMetadataExpirationTime = getCacheEnvVariable(config, "inventory.mapping-metadata-cache.expiration.time.seconds");
+    MappingMetadataCache mappingMetadataCache = new MappingMetadataCache(vertx, client, Long.parseLong(mappingMetadataExpirationTime));
+
+    MarcBibInstanceHridSetKafkaHandler marcBibInstanceHridSetKafkaHandler = new MarcBibInstanceHridSetKafkaHandler(instanceUpdateDelegate, kafkaInternalCache, mappingMetadataCache);
+    MarcHoldingsRecordHridSetKafkaHandler marcHoldingsRecordHridSetKafkaHandler = new MarcHoldingsRecordHridSetKafkaHandler(holdingsRecordUpdateDelegate, kafkaInternalCache, mappingMetadataCache);
 
     CompositeFuture.all(
         marcBibConsumerWrapper.start(marcBibInstanceHridSetKafkaHandler, constructModuleName()),
@@ -103,5 +108,13 @@ public class MarcHridSetConsumerVerticle extends AbstractVerticle {
       .globalLoadSensor(GLOBAL_LOAD_SENSOR)
       .subscriptionDefinition(subscriptionDefinition)
       .build();
+  }
+
+  private String getCacheEnvVariable(JsonObject config, String variableName) {
+    String cacheExpirationTime = config.getString(variableName);
+    if (StringUtils.isBlank(cacheExpirationTime)) {
+      cacheExpirationTime = "3600";
+    }
+    return cacheExpirationTime;
   }
 }
