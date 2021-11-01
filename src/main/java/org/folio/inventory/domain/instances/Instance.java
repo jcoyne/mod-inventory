@@ -5,6 +5,7 @@ import static org.folio.inventory.domain.instances.PublicationPeriod.publication
 import static org.folio.inventory.domain.instances.PublicationPeriod.publicationPeriodToJson;
 import static org.folio.inventory.support.JsonArrayHelper.toListOfStrings;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -70,7 +71,8 @@ public class Instance {
   public static final String PUBLICATION_PERIOD_KEY = "publicationPeriod";
 
   private final String id;
-  private final String version;
+  @JsonProperty("_version")
+  private String version;
   private final String hrid;
   private String matchKey;
   private final String source;
@@ -570,6 +572,11 @@ public class Instance {
 
   public Instance setStatusUpdatedDate(String statusUpdatedDate) {
     this.statusUpdatedDate = statusUpdatedDate;
+    return this;
+  }
+
+  public Instance setVersion(String version) {
+    this.version = version;
     return this;
   }
 
