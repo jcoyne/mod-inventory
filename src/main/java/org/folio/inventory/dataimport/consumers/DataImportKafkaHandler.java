@@ -1,5 +1,11 @@
 package org.folio.inventory.dataimport.consumers;
 
+import static java.lang.String.format;
+import static org.folio.DataImportEventTypes.DI_ERROR;
+
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -21,7 +27,7 @@ import org.folio.inventory.dataimport.cache.ProfileSnapshotCache;
 import org.folio.inventory.dataimport.handlers.actions.CreateHoldingEventHandler;
 import org.folio.inventory.dataimport.handlers.actions.CreateInstanceEventHandler;
 import org.folio.inventory.dataimport.handlers.actions.CreateItemEventHandler;
-import org.folio.inventory.dataimport.handlers.actions.CreateMarcAuthorityEventHandler;
+import org.folio.inventory.dataimport.handlers.actions.CreateAuthorityEventHandler;
 import org.folio.inventory.dataimport.handlers.actions.CreateMarcHoldingsEventHandler;
 import org.folio.inventory.dataimport.handlers.actions.InstanceUpdateDelegate;
 import org.folio.inventory.dataimport.handlers.actions.MarcBibMatchedPostProcessingEventHandler;
@@ -30,6 +36,7 @@ import org.folio.inventory.dataimport.handlers.actions.PrecedingSucceedingTitles
 import org.folio.inventory.dataimport.handlers.actions.ReplaceInstanceEventHandler;
 import org.folio.inventory.dataimport.handlers.actions.UpdateHoldingEventHandler;
 import org.folio.inventory.dataimport.handlers.actions.UpdateItemEventHandler;
+import org.folio.inventory.dataimport.handlers.actions.UpdateAuthorityEventHandler;
 import org.folio.inventory.dataimport.handlers.matching.MatchAuthorityEventHandler;
 import org.folio.inventory.dataimport.handlers.matching.MatchHoldingEventHandler;
 import org.folio.inventory.dataimport.handlers.matching.MatchInstanceEventHandler;
@@ -39,6 +46,7 @@ import org.folio.inventory.dataimport.handlers.matching.loaders.HoldingLoader;
 import org.folio.inventory.dataimport.handlers.matching.loaders.InstanceLoader;
 import org.folio.inventory.dataimport.handlers.matching.loaders.ItemLoader;
 import org.folio.inventory.dataimport.handlers.matching.util.EventHandlingUtil;
+import org.folio.inventory.services.HoldingsIdStorageService;
 import org.folio.inventory.services.InstanceIdStorageService;
 import org.folio.inventory.services.ItemIdStorageService;
 import org.folio.inventory.storage.Storage;
@@ -55,12 +63,6 @@ import org.folio.processing.matching.reader.MarcValueReaderImpl;
 import org.folio.processing.matching.reader.MatchValueReaderFactory;
 import org.folio.processing.matching.reader.StaticValueReaderImpl;
 import org.folio.rest.jaxrs.model.Event;
-
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
-import static java.lang.String.format;
-import static org.folio.DataImportEventTypes.DI_ERROR;
 
 public class DataImportKafkaHandler implements AsyncRecordHandler<String, String> {
 
@@ -145,10 +147,11 @@ public class DataImportKafkaHandler implements AsyncRecordHandler<String, String
     EventManager.registerEventHandler(new MatchHoldingEventHandler(mappingMetadataCache));
     EventManager.registerEventHandler(new MatchAuthorityEventHandler(mappingMetadataCache));
     EventManager.registerEventHandler(new CreateItemEventHandler(storage, mappingMetadataCache, new ItemIdStorageService(new EntityIdStorageDaoImpl(new PostgresClientFactory(vertx)))));
-    EventManager.registerEventHandler(new CreateHoldingEventHandler(storage, mappingMetadataCache));
+    EventManager.registerEventHandler(new CreateHoldingEventHandler(storage, mappingMetadataCache, new HoldingsIdStorageService(new EntityIdStorageDaoImpl(new PostgresClientFactory(vertx)))));
     EventManager.registerEventHandler(new CreateInstanceEventHandler(storage, precedingSucceedingTitlesHelper, mappingMetadataCache, new InstanceIdStorageService(new EntityIdStorageDaoImpl(new PostgresClientFactory(vertx)))));
-    EventManager.registerEventHandler(new CreateMarcHoldingsEventHandler(storage, mappingMetadataCache));
-    EventManager.registerEventHandler(new CreateMarcAuthorityEventHandler(storage, mappingMetadataCache));
+    EventManager.registerEventHandler(new CreateMarcHoldingsEventHandler(storage, mappingMetadataCache, new HoldingsIdStorageService(new EntityIdStorageDaoImpl(new PostgresClientFactory(vertx)))));
+    EventManager.registerEventHandler(new CreateAuthorityEventHandler(storage, mappingMetadataCache));
+    EventManager.registerEventHandler(new UpdateAuthorityEventHandler(storage, mappingMetadataCache));
     EventManager.registerEventHandler(new UpdateItemEventHandler(storage, mappingMetadataCache));
     EventManager.registerEventHandler(new UpdateHoldingEventHandler(storage, mappingMetadataCache));
     EventManager.registerEventHandler(new ReplaceInstanceEventHandler(storage, precedingSucceedingTitlesHelper, mappingMetadataCache));
