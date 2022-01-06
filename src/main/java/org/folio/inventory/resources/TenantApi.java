@@ -56,7 +56,7 @@ public class TenantApi {
         return Future.succeededFuture(0);
       }
     } catch (Exception e) {
-      String cause = format("Error while initializing schema %s for tenant %s", schemaName, tenantId);
+      String cause = format("Error while initializing schema %s for tenant %s with message %s", schemaName, tenantId, e.getMessage());
       LOGGER.error(cause, e);
       return Future.failedFuture(cause);
     }
