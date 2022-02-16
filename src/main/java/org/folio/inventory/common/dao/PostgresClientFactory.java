@@ -4,12 +4,7 @@ import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
-import io.vertx.sqlclient.PreparedQuery;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.Tuple;
-import io.vertx.sqlclient.PoolOptions;
-import io.vertx.sqlclient.SqlClient;
+import io.vertx.sqlclient.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -53,6 +48,16 @@ public class PostgresClientFactory {
    */
   public Future<RowSet<Row>> execute(String sql, Tuple tuple, String tenantId) {
     Future<Void> future = Future.succeededFuture();
+    final String explainQuery = "EXPLAIN ANALYZE " + sql;
+    preparedQuery(explainQuery, tenantId).execute(tuple, pr -> {
+      StringBuilder e = new StringBuilder(explainQuery);
+      RowIterator<Row> iterator = pr.result().iterator();
+      while (iterator.hasNext()) {
+        Row row = iterator.next();
+        e.append('\n').append(row.getValue(0));
+      }
+      LOGGER.warn(e.toString());
+    });
     return future.compose(x -> preparedQuery(sql, tenantId).execute(tuple));
   }
 
