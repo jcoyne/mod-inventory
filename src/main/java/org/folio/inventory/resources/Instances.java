@@ -472,13 +472,8 @@ public class Instances extends AbstractInstances {
                    itemIds.add(item.getString( "id" ));
                  }
                  // Then look up the items in bound-with-parts
-                 return MultipleRecordsFetchClient
-                   .builder()
-                   .withCollectionPropertyName( "boundWithParts" )
-                   .withExpectedStatus( 200 )
-                   .withCollectionResourceClient( createBoundWithPartsClient( routingContext, webContext ) )
-                   .build()
-                   .find( itemIds, this::cqlMatchAnyByItemIds )
+                 return fetchForItems(itemIds,
+                   createBoundWithPartsClient(routingContext, webContext))
                    .thenCompose( boundWithParts2 ->
                    {
                      List<String> boundWithItemIds =
@@ -493,6 +488,18 @@ public class Instances extends AbstractInstances {
                    });
                });
         });
+  }
+
+  private CompletableFuture<List<JsonObject>> fetchForItems(
+    List<String> itemIds, CollectionResourceClient boundWithPartsClient) {
+
+    return MultipleRecordsFetchClient
+      .builder()
+      .withCollectionPropertyName("boundWithParts")
+      .withExpectedStatus(200)
+      .withCollectionResourceClient(boundWithPartsClient)
+      .build()
+      .find(itemIds, this::cqlMatchAnyByItemIds);
   }
 
   /**
