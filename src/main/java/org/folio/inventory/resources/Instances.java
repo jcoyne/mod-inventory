@@ -45,6 +45,7 @@ import org.folio.inventory.storage.external.BoundWithPartsRepository;
 import org.folio.inventory.storage.external.CollectionResourceClient;
 import org.folio.inventory.storage.external.CqlQuery;
 import org.folio.inventory.storage.external.HoldingsRepository;
+import org.folio.inventory.storage.external.ItemRepository;
 import org.folio.inventory.storage.external.MultipleRecordsFetchClient;
 import org.folio.inventory.support.JsonArrayHelper;
 import org.folio.inventory.support.http.client.Response;
@@ -140,7 +141,9 @@ public class Instances extends AbstractInstances {
       .thenCompose(response -> fetchPrecedingSucceedingTitles(response, routingContext, context))
       .thenCompose(response -> lookUpBoundWithsForInstanceRecordSet(instancesResponse, routingContext, context,
         new BoundWithPartsRepository(
-          createBoundWithPartsClient(routingContext, context))))
+          createBoundWithPartsClient(routingContext, context)),
+        new ItemRepository(
+          createItemsStorageClient(routingContext, context))))
       .whenComplete((result, ex) -> {
         if (ex == null) {
           JsonResponse.success(routingContext.response(),
@@ -341,9 +344,22 @@ public class Instances extends AbstractInstances {
       }, FailureResponseConsumer.serverError(routingContext.response()));
   }
 
-  private CompletableFuture<Instance> setBoundWithFlag (Success<Instance> success, RoutingContext routingContext, WebContext webContext) {
+  private CompletableFuture<Instance> setBoundWithFlag (Success<Instance> success,
+    RoutingContext routingContext, WebContext webContext) {
+
+    final var itemRepository = new ItemRepository(
+      createItemsStorageClient(routingContext, webContext));
+
+    final var holdingsRepository = new HoldingsRepository(
+      createHoldingsStorageClient(routingContext, webContext));
+
+    final var boundWithPartsRepository = new BoundWithPartsRepository(
+      createBoundWithPartsClient(routingContext, webContext));
+
     Instance instance = success.getResult();
-    return findBoundWithHoldingsIdsForInstanceId(instance.getId(), routingContext, webContext)
+
+    return findBoundWithHoldingsIdsForInstanceId(instance.getId(),
+      itemRepository, holdingsRepository, boundWithPartsRepository)
       .thenCompose(boundWithHoldings -> {
         instance.setIsBoundWith(boundWithHoldings != null && !boundWithHoldings.isEmpty());
         return completedFuture(instance);
@@ -413,76 +429,67 @@ public class Instances extends AbstractInstances {
   /**
    * Retrieves a list of IDs for the holdings under the provided Instance that are part of a bound-with.
    * @param instanceId  The ID of the Instance to find bound-with holdings for
-   * @param routingContext  Routing
-   * @param webContext      Context
+   * @param itemRepository repository for items
+   * @param holdingsRepository repository for holdings
+   * @param boundWithPartsRepository repository for bound with parts
    * @return List of IDs of holdings records that are bound-with
    */
   private CompletableFuture<List<String>> findBoundWithHoldingsIdsForInstanceId(
-    String instanceId, RoutingContext routingContext, WebContext webContext ) {
-
-    final var holdingsRepository = new HoldingsRepository(
-      createHoldingsStorageClient(routingContext, webContext));
-
-    final var boundWithPartsRepository = new BoundWithPartsRepository(
-      createBoundWithPartsClient(routingContext, webContext));
+    String instanceId, ItemRepository itemRepository,
+    HoldingsRepository holdingsRepository,
+    BoundWithPartsRepository boundWithPartsRepository) {
 
     return holdingsRepository.findForInstance(instanceId)
       .thenApply(holdings -> holdings.toKeys(Holding::getId))
       .thenApply(ArrayList::new)
       .thenCompose(holdingsRecordsList ->
-        checkHoldingsForBoundWith(holdingsRecordsList, routingContext, webContext,
-          boundWithPartsRepository));
+        checkHoldingsForBoundWith(holdingsRecordsList,
+          boundWithPartsRepository, itemRepository));
   }
 
   /**
    * From the provided list of holdings record IDs, finds out which of them
    * are part of  bound-withs -- if any -- and returns a list of those.
    * @param holdingsRecordIds holdings records to check for bound-with
-   * @param routingContext Routing
-   * @param webContext Context
    * @param boundWithPartsRepository repository for bound with parts
+   * @param itemRepository repository for items
    * @return List of IDs for holdings records that are bound with others.
    */
   private CompletableFuture<List<String>> checkHoldingsForBoundWith(
-    List<String> holdingsRecordIds, RoutingContext routingContext,
-    WebContext webContext, BoundWithPartsRepository boundWithPartsRepository) {
+    List<String> holdingsRecordIds,
+    BoundWithPartsRepository boundWithPartsRepository,
+    ItemRepository itemRepository) {
 
     final var holdingsRecordsThatAreBoundWith = new ArrayList<String>();
     String holdingsRecordIdKey = "holdingsRecordId";
 
     // Check if any IDs in the list of holdings appears in bound-with-parts
     return boundWithPartsRepository.findForHoldings(holdingsRecordIds)
-      .thenCompose( boundWithParts -> {
-          holdingsRecordsThatAreBoundWith.addAll(boundWithParts
-            .toKeys(BoundWithPart::getHoldingsRecordId));
-           // Check if any of the holdings has an item that appears in bound-with-parts
-           // First, find the holdings' items
-           return MultipleRecordsFetchClient
-             .builder()
-             .withCollectionPropertyName( "items" )
-             .withExpectedStatus( 200 )
-             .withCollectionResourceClient( createItemsStorageClient( routingContext, webContext ) )
-             .build()
-             .find( holdingsRecordIds, Instances::cqlMatchAnyByHoldingsRecordIds)
-             .thenCompose(
-               items -> {
-                 List<String> itemIds = new ArrayList<>();
-                 Map<String,String> itemHoldingsMap = new HashMap<>();
-                 for (JsonObject item : items) {
-                   itemHoldingsMap.put(item.getString( "id" ), item.getString( holdingsRecordIdKey ));
-                   itemIds.add(item.getString( "id" ));
-                 }
-                 // Then look up the items in bound-with-parts
-                 return boundWithPartsRepository.findForItems(itemIds)
-                   .thenCompose( boundWithParts2 ->
-                   {
-                     final var boundWithItemIds = boundWithParts2.toKeys(
-                       BoundWithPart::getItemId);
-                     for (String itemId : boundWithItemIds) {
-                       holdingsRecordsThatAreBoundWith.add(itemHoldingsMap.get(itemId));
-                     }
-                     return completedFuture( holdingsRecordsThatAreBoundWith );
-                   });
+      .thenCompose(boundWithParts -> {
+        holdingsRecordsThatAreBoundWith.addAll(boundWithParts
+          .toKeys(BoundWithPart::getHoldingsRecordId));
+
+        // Check if any of the holdings has an item that appears in bound-with-parts
+        // First, find the holdings' items
+        return itemRepository.findForHoldings(holdingsRecordIds)
+             .thenCompose(items -> {
+               List<String> itemIds = new ArrayList<>();
+               Map<String,String> itemHoldingsMap = new HashMap<>();
+               for (JsonObject item : items) {
+                 itemHoldingsMap.put(item.getString( "id" ), item.getString( holdingsRecordIdKey ));
+                 itemIds.add(item.getString( "id" ));
+               }
+               // Then look up the items in bound-with-parts
+               return boundWithPartsRepository.findForItems(itemIds)
+                 .thenCompose( boundWithParts2 ->
+                 {
+                   final var boundWithItemIds = boundWithParts2.toKeys(
+                     BoundWithPart::getItemId);
+                   for (String itemId : boundWithItemIds) {
+                     holdingsRecordsThatAreBoundWith.add(itemHoldingsMap.get(itemId));
+                   }
+                   return completedFuture( holdingsRecordsThatAreBoundWith );
+                 });
                });
         });
   }
@@ -494,11 +501,13 @@ public class Instances extends AbstractInstances {
    * @param routingContext Routing
    * @param webContext Context
    * @param boundWithPartsRepository repository for bound with parts
+   * @param itemRepository repository for items
    * @return Returns the provided result set with 0 or more Instances marked as bound-with
    */
   private CompletableFuture<InstancesResponse> lookUpBoundWithsForInstanceRecordSet(
     InstancesResponse instancesResponse, RoutingContext routingContext,
-    WebContext webContext, BoundWithPartsRepository boundWithPartsRepository) {
+    WebContext webContext, BoundWithPartsRepository boundWithPartsRepository,
+    ItemRepository itemRepository) {
 
     if (instancesResponse.hasRecords()) {
       return fetchHoldingsRecordsForInstanceRecordSet(instancesResponse, routingContext, webContext)
@@ -513,8 +522,8 @@ public class Instances extends AbstractInstances {
             }
             ArrayList<String> holdingsIdsList = new ArrayList<>(holdingsToInstanceMap.keySet());
 
-            return checkHoldingsForBoundWith(holdingsIdsList, routingContext, webContext,
-              boundWithPartsRepository)
+            return checkHoldingsForBoundWith(holdingsIdsList,
+              boundWithPartsRepository, itemRepository)
               .thenCompose(holdingsRecordIds -> {
                   List<String> boundWithInstanceIds = new ArrayList<>();
                   for (String holdingsRecordId : holdingsRecordIds) {
@@ -684,11 +693,6 @@ public class Instances extends AbstractInstances {
 
   private CqlQuery cqlMatchAnyByInstanceIds(List<String> instanceIds) {
     return CqlQuery.exactMatchAny(INSTANCE_ID, instanceIds);
-  }
-
-  public static CqlQuery cqlMatchAnyByHoldingsRecordIds(
-    List<String> holdingsRecordIds) {
-    return CqlQuery.exactMatchAny("holdingsRecordId", holdingsRecordIds);
   }
 
   private List<String> getInstanceIds(Success<MultipleRecords<Instance>> success) {
