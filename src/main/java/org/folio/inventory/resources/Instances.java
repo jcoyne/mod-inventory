@@ -10,12 +10,19 @@ import static org.folio.inventory.support.EndpointFailureHandler.handleFailure;
 import static org.folio.inventory.support.http.server.SuccessResponse.noContent;
 import static org.folio.inventory.validation.InstancesValidators.refuseWhenHridChanged;
 
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.json.JsonArray;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.stream.Collectors;
+
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.folio.HttpStatus;
@@ -23,6 +30,7 @@ import org.folio.inventory.common.WebContext;
 import org.folio.inventory.common.api.request.PagingParameters;
 import org.folio.inventory.common.domain.MultipleRecords;
 import org.folio.inventory.common.domain.Success;
+import org.folio.inventory.domain.BoundWithPart;
 import org.folio.inventory.domain.instances.Instance;
 import org.folio.inventory.domain.instances.InstanceCollection;
 import org.folio.inventory.domain.instances.InstanceRelationship;
@@ -34,6 +42,7 @@ import org.folio.inventory.exceptions.UnprocessableEntityException;
 import org.folio.inventory.services.InstanceRelationshipsService;
 import org.folio.inventory.services.RelatedInstancesService;
 import org.folio.inventory.storage.Storage;
+import org.folio.inventory.storage.external.BoundWithPartsRepository;
 import org.folio.inventory.storage.external.CollectionResourceClient;
 import org.folio.inventory.storage.external.CqlQuery;
 import org.folio.inventory.storage.external.MultipleRecordsFetchClient;
@@ -48,18 +57,12 @@ import org.folio.inventory.validation.InstancePrecedingSucceedingTitleValidators
 import org.folio.inventory.validation.InstancesValidators;
 import org.folio.rest.client.SourceStorageRecordsClient;
 
-import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.stream.Collectors;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.web.handler.BodyHandler;
 
 
 public class Instances extends AbstractInstances {
@@ -443,11 +446,16 @@ public class Instances extends AbstractInstances {
     List<String> holdingsRecordsThatAreBoundWith = new ArrayList<>();
     String holdingsRecordIdKey = "holdingsRecordId";
     // Check if any IDs in the list of holdings appears in bound-with-parts
+    final var boundWithPartsClient = createBoundWithPartsClient(routingContext,
+      webContext);
+
+    final var boundWithPartsRepository = new BoundWithPartsRepository(boundWithPartsClient);
+
     return MultipleRecordsFetchClient
       .builder()
       .withCollectionPropertyName("boundWithParts")
       .withExpectedStatus(200)
-      .withCollectionResourceClient(createBoundWithPartsClient(routingContext, webContext))
+      .withCollectionResourceClient(boundWithPartsClient)
       .build()
       .find(holdingsRecordIds, this::cqlMatchAnyByHoldingsRecordIds)
       .thenCompose( boundWithParts -> {
@@ -472,13 +480,12 @@ public class Instances extends AbstractInstances {
                    itemIds.add(item.getString( "id" ));
                  }
                  // Then look up the items in bound-with-parts
-                 return fetchForItems(itemIds,
-                   createBoundWithPartsClient(routingContext, webContext))
+                 return boundWithPartsRepository.fetchForItems(itemIds)
                    .thenCompose( boundWithParts2 ->
                    {
-                     List<String> boundWithItemIds =
+                     final var boundWithItemIds =
                        boundWithParts2.stream()
-                         .map(boundWithPart2 -> boundWithPart2.getString( "itemId" ))
+                         .map(BoundWithPart::getItemId)
                          .distinct()
                          .collect(Collectors.toList());
                      for (String itemId : boundWithItemIds) {
@@ -488,18 +495,6 @@ public class Instances extends AbstractInstances {
                    });
                });
         });
-  }
-
-  private CompletableFuture<List<JsonObject>> fetchForItems(
-    List<String> itemIds, CollectionResourceClient boundWithPartsClient) {
-
-    return MultipleRecordsFetchClient
-      .builder()
-      .withCollectionPropertyName("boundWithParts")
-      .withExpectedStatus(200)
-      .withCollectionResourceClient(boundWithPartsClient)
-      .build()
-      .find(itemIds, this::cqlMatchAnyByItemIds);
   }
 
   /**
@@ -700,10 +695,6 @@ public class Instances extends AbstractInstances {
 
   private CqlQuery cqlMatchAnyByHoldingsRecordIds(List<String> holdingsRecordIds) {
     return CqlQuery.exactMatchAny("holdingsRecordId", holdingsRecordIds);
-  }
-
-  private CqlQuery cqlMatchAnyByItemIds (List<String> itemIds) {
-    return CqlQuery.exactMatchAny( "itemId", itemIds );
   }
 
   private List<String> getInstanceIdsFromInstanceResult(Success success) {
