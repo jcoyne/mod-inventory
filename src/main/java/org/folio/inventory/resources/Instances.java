@@ -14,11 +14,9 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
@@ -359,8 +357,7 @@ public class Instances extends AbstractInstances {
     InstancesResponse instancesResponse,
     RoutingContext routingContext) {
 
-    final List<String> instanceIds =
-      getInstanceIdsFromInstanceResult(instancesResponse.getSuccess());
+    final var instanceIds = getInstanceIds(instancesResponse.getSuccess());
 
     return createRelatedInstancesService(routingContext)
       .fetchRelatedInstances(instanceIds)
@@ -377,8 +374,7 @@ public class Instances extends AbstractInstances {
     InstancesResponse instancesResponse,
     RoutingContext routingContext) {
 
-    final List<String> instanceIds =
-      getInstanceIdsFromInstanceResult(instancesResponse.getSuccess());
+    final var instanceIds = getInstanceIds(instancesResponse.getSuccess());
 
     return createInstanceRelationshipsService(routingContext)
       .fetchInstanceRelationships(instanceIds)
@@ -388,7 +384,7 @@ public class Instances extends AbstractInstances {
   private CompletableFuture<InstancesResponse> fetchPrecedingSucceedingTitles(
     InstancesResponse instancesResponse, RoutingContext routingContext, WebContext context) {
 
-    List<String> instanceIds = getInstanceIdsFromInstanceResult(instancesResponse.getSuccess());
+    final var instanceIds = getInstanceIds(instancesResponse.getSuccess());
 
     return createInstanceRelationshipsService(routingContext)
       .fetchInstancePrecedingSucceedingTitles(instanceIds)
@@ -398,7 +394,8 @@ public class Instances extends AbstractInstances {
 
   private CompletableFuture<List<JsonObject>> fetchHoldingsRecordsForInstanceRecordSet(
     InstancesResponse instancesResponse, RoutingContext routingContext, WebContext context) {
-    List<String> instanceIds = getInstanceIdsFromInstanceResult(instancesResponse.getSuccess());
+
+    final var instanceIds = getInstanceIds(instancesResponse.getSuccess());
 
     MultipleRecordsFetchClient holdingsFetcher = MultipleRecordsFetchClient.builder()
       .withCollectionPropertyName("holdingsRecords")
@@ -539,7 +536,7 @@ public class Instances extends AbstractInstances {
     Success<Instance> success, RoutingContext routingContext, WebContext context) {
 
     Instance instance = success.getResult();
-    List<String> instanceIds = getInstanceIdsFromInstanceResult(success);
+    final var instanceIds = getInstanceId(success);
     String query = createQueryForRelatedInstances(instanceIds);
     CollectionResourceClient relatedInstancesClient =
       createRelatedInstancesClient(routingContext, context);
@@ -566,8 +563,9 @@ public class Instances extends AbstractInstances {
     Success<Instance> success, RoutingContext routingContext, WebContext context) {
 
     Instance instance = success.getResult();
-    List<String> instanceIds = getInstanceIdsFromInstanceResult(success);
+    final var instanceIds = getInstanceId(success);
     String query = createQueryForInstanceRelationships(instanceIds);
+
     CollectionResourceClient relatedInstancesClient =
       createInstanceRelationshipsClient(routingContext, context);
 
@@ -591,8 +589,7 @@ public class Instances extends AbstractInstances {
   private CompletableFuture<InstancesResponse> withRelatedInstances(
     InstancesResponse instancesResponse, List<JsonObject> relatedInstanceList) {
 
-    final List<String> instanceIds =
-      getInstanceIdsFromInstanceResult(instancesResponse.getSuccess());
+    final var instanceIds = getInstanceIds(instancesResponse.getSuccess());
 
     Map<String, List<RelatedInstance>> relatedInstanceMap = new HashMap<>();
 
@@ -614,7 +611,7 @@ public class Instances extends AbstractInstances {
     if (result.getStatusCode() == 200) {
       JsonObject json = result.getJson();
       List<JsonObject> relationsList = JsonArrayHelper.toList(json.getJsonArray(Instance.RELATED_INSTANCES_KEY));
-      relationsList.forEach(rel -> 
+      relationsList.forEach(rel ->
         relatedInstanceList.add(RelatedInstance.from(rel, instance.getId()))
       );
       instance.getRelatedInstances().addAll(relatedInstanceList);
@@ -664,7 +661,7 @@ public class Instances extends AbstractInstances {
     Success<Instance> success, RoutingContext routingContext, WebContext context) {
 
     Instance instance = success.getResult();
-    List<String> instanceIds = getInstanceIdsFromInstanceResult(success);
+    final var instanceIds = getInstanceId(success);
     String queryForPrecedingSucceedingInstances = createQueryForPrecedingSucceedingInstances(instanceIds);
     CollectionResourceClient precedingSucceedingTitlesClient = createPrecedingSucceedingTitlesClient(routingContext, context);
 
@@ -688,18 +685,12 @@ public class Instances extends AbstractInstances {
     return CqlQuery.exactMatchAny("holdingsRecordId", holdingsRecordIds);
   }
 
-  private List<String> getInstanceIdsFromInstanceResult(Success success) {
-    List<String> instanceIds = new ArrayList<>();
-    if (success.getResult() instanceof Instance) {
-      instanceIds = Collections.singletonList(((Instance) success.getResult()).getId());
-    } else if (success.getResult() instanceof MultipleRecords) {
-      instanceIds = (((MultipleRecords<Instance>) success.getResult()).records.stream()
-        .map(Instance::getId)
-        .filter(Objects::nonNull)
-        .distinct()
-        .collect(Collectors.toList()));
-    }
-    return instanceIds;
+  private List<String> getInstanceIds(Success<MultipleRecords<Instance>> success) {
+    return new ArrayList<>(success.getResult().toKeys(Instance::getId));
+  }
+
+  private List<String> getInstanceId(Success<Instance> success) {
+    return List.of(success.getResult().getId());
   }
 
   private synchronized <T> void addToList(Map<String, List<T>> items,

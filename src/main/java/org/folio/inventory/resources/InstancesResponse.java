@@ -1,5 +1,12 @@
 package org.folio.inventory.resources;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.folio.inventory.common.domain.MultipleRecords;
 import org.folio.inventory.common.domain.Success;
 import org.folio.inventory.domain.instances.Instance;
@@ -8,15 +15,13 @@ import org.folio.inventory.domain.instances.InstanceRelationshipToParent;
 import org.folio.inventory.domain.instances.RelatedInstance;
 import org.folio.inventory.domain.instances.titles.PrecedingSucceedingTitle;
 
-import java.util.*;
-
 public class InstancesResponse {
   private Success<MultipleRecords<Instance>> success;
   private Map<String, List<RelatedInstance>> relatedInstanceMap = new HashMap<>();
-  private Map<String, List<InstanceRelationshipToParent>> parentInstanceMap = new HashMap();
-  private Map<String, List<InstanceRelationshipToChild>> childInstanceMap = new HashMap();
-  private Map<String, List<PrecedingSucceedingTitle>> precedingTitlesMap = new HashMap();
-  private Map<String, List<PrecedingSucceedingTitle>> succeedingTitlesMap = new HashMap();
+  private Map<String, List<InstanceRelationshipToParent>> parentInstanceMap = new HashMap<>();
+  private Map<String, List<InstanceRelationshipToChild>> childInstanceMap = new HashMap<>();
+  private Map<String, List<PrecedingSucceedingTitle>> precedingTitlesMap = new HashMap<>();
+  private Map<String, List<PrecedingSucceedingTitle>> succeedingTitlesMap = new HashMap<>();
   private Set<String> instancesThatAreBoundWith = new HashSet<>();
 
   public Success<MultipleRecords<Instance>> getSuccess() {
