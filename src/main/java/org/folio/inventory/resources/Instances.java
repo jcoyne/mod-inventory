@@ -138,7 +138,9 @@ public class Instances extends AbstractInstances {
       .thenCompose(response -> fetchRelatedInstances(response, routingContext))
       .thenCompose(response -> fetchRelationships(response, routingContext))
       .thenCompose(response -> fetchPrecedingSucceedingTitles(response, routingContext, context))
-      .thenCompose(response -> lookUpBoundWithsForInstanceRecordSet(instancesResponse, routingContext, context))
+      .thenCompose(response -> lookUpBoundWithsForInstanceRecordSet(instancesResponse, routingContext, context,
+        new BoundWithPartsRepository(
+          createBoundWithPartsClient(routingContext, context))))
       .whenComplete((result, ex) -> {
         if (ex == null) {
           JsonResponse.success(routingContext.response(),
@@ -418,16 +420,18 @@ public class Instances extends AbstractInstances {
   private CompletableFuture<List<String>> findBoundWithHoldingsIdsForInstanceId(
     String instanceId, RoutingContext routingContext, WebContext webContext ) {
 
-    final var holdingsStorageClient = createHoldingsStorageClient(
-      routingContext, webContext);
+    final var holdingsRepository = new HoldingsRepository(
+      createHoldingsStorageClient(routingContext, webContext));
 
-    final var holdingsRepository = new HoldingsRepository(holdingsStorageClient);
+    final var boundWithPartsRepository = new BoundWithPartsRepository(
+      createBoundWithPartsClient(routingContext, webContext));
 
     return holdingsRepository.findForInstance(instanceId)
       .thenApply(holdings -> holdings.toKeys(Holding::getId))
       .thenApply(ArrayList::new)
       .thenCompose(holdingsRecordsList ->
-        checkHoldingsForBoundWith(holdingsRecordsList, routingContext, webContext));
+        checkHoldingsForBoundWith(holdingsRecordsList, routingContext, webContext,
+          boundWithPartsRepository));
   }
 
   /**
@@ -436,20 +440,17 @@ public class Instances extends AbstractInstances {
    * @param holdingsRecordIds holdings records to check for bound-with
    * @param routingContext Routing
    * @param webContext Context
+   * @param boundWithPartsRepository repository for bound with parts
    * @return List of IDs for holdings records that are bound with others.
    */
   private CompletableFuture<List<String>> checkHoldingsForBoundWith(
     List<String> holdingsRecordIds, RoutingContext routingContext,
-    WebContext webContext) {
+    WebContext webContext, BoundWithPartsRepository boundWithPartsRepository) {
 
     final var holdingsRecordsThatAreBoundWith = new ArrayList<String>();
     String holdingsRecordIdKey = "holdingsRecordId";
+
     // Check if any IDs in the list of holdings appears in bound-with-parts
-    final var boundWithPartsClient = createBoundWithPartsClient(routingContext,
-      webContext);
-
-    final var boundWithPartsRepository = new BoundWithPartsRepository(boundWithPartsClient);
-
     return boundWithPartsRepository.findForHoldings(holdingsRecordIds)
       .thenCompose( boundWithParts -> {
           holdingsRecordsThatAreBoundWith.addAll(boundWithParts
@@ -492,12 +493,12 @@ public class Instances extends AbstractInstances {
    * @param instancesResponse Instance result set
    * @param routingContext Routing
    * @param webContext Context
+   * @param boundWithPartsRepository repository for bound with parts
    * @return Returns the provided result set with 0 or more Instances marked as bound-with
    */
   private CompletableFuture<InstancesResponse> lookUpBoundWithsForInstanceRecordSet(
-                                                  InstancesResponse instancesResponse,
-                                                  RoutingContext routingContext,
-                                                  WebContext webContext) {
+    InstancesResponse instancesResponse, RoutingContext routingContext,
+    WebContext webContext, BoundWithPartsRepository boundWithPartsRepository) {
 
     if (instancesResponse.hasRecords()) {
       return fetchHoldingsRecordsForInstanceRecordSet(instancesResponse, routingContext, webContext)
@@ -506,11 +507,14 @@ public class Instances extends AbstractInstances {
             return completedFuture(instancesResponse);
           } else {
             Map<String, String> holdingsToInstanceMap = new HashMap<>();
+
             for (JsonObject holdingsRecord : holdingsRecordList) {
               holdingsToInstanceMap.put(holdingsRecord.getString(ID), holdingsRecord.getString(INSTANCE_ID));
             }
             ArrayList<String> holdingsIdsList = new ArrayList<>(holdingsToInstanceMap.keySet());
-            return checkHoldingsForBoundWith(holdingsIdsList, routingContext, webContext)
+
+            return checkHoldingsForBoundWith(holdingsIdsList, routingContext, webContext,
+              boundWithPartsRepository)
               .thenCompose(holdingsRecordIds -> {
                   List<String> boundWithInstanceIds = new ArrayList<>();
                   for (String holdingsRecordId : holdingsRecordIds) {
