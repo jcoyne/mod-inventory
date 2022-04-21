@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+import org.folio.inventory.common.domain.MultipleRecords;
 import org.folio.inventory.domain.BoundWithPart;
 
 import io.vertx.core.json.JsonObject;
@@ -15,7 +16,7 @@ public class BoundWithPartsRepository {
     this.client = client;
   }
 
-  public CompletableFuture<List<BoundWithPart>> fetchForItems(List<String> itemIds) {
+  public CompletableFuture<MultipleRecords<BoundWithPart>> fetchForItems(List<String> itemIds) {
     final var fetcher = MultipleRecordsFetchClient
       .builder()
       .withCollectionPropertyName("boundWithParts")
@@ -25,7 +26,8 @@ public class BoundWithPartsRepository {
 
     return fetcher
       .find(itemIds, this::cqlMatchAnyByItemIds)
-      .thenApply(parts -> parts.stream().map(this::mapJsonToPart).collect(Collectors.toList()));
+      .thenApply(parts -> parts.stream().map(this::mapJsonToPart).collect(Collectors.toList()))
+      .thenApply(parts -> new MultipleRecords<>(parts, parts.size()));
   }
 
   private BoundWithPart mapJsonToPart(JsonObject json) {

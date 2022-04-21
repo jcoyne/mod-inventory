@@ -483,11 +483,8 @@ public class Instances extends AbstractInstances {
                  return boundWithPartsRepository.fetchForItems(itemIds)
                    .thenCompose( boundWithParts2 ->
                    {
-                     final var boundWithItemIds =
-                       boundWithParts2.stream()
-                         .map(BoundWithPart::getItemId)
-                         .distinct()
-                         .collect(Collectors.toList());
+                     final var boundWithItemIds = boundWithParts2.toKeys(
+                       BoundWithPart::getItemId);
                      for (String itemId : boundWithItemIds) {
                        holdingsRecordsThatAreBoundWith.add(itemHoldingsMap.get(itemId));
                      }
