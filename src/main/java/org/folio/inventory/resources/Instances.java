@@ -29,6 +29,7 @@ import org.folio.inventory.common.api.request.PagingParameters;
 import org.folio.inventory.common.domain.MultipleRecords;
 import org.folio.inventory.common.domain.Success;
 import org.folio.inventory.domain.BoundWithPart;
+import org.folio.inventory.domain.Holding;
 import org.folio.inventory.domain.instances.Instance;
 import org.folio.inventory.domain.instances.InstanceCollection;
 import org.folio.inventory.domain.instances.InstanceRelationship;
@@ -43,6 +44,7 @@ import org.folio.inventory.storage.Storage;
 import org.folio.inventory.storage.external.BoundWithPartsRepository;
 import org.folio.inventory.storage.external.CollectionResourceClient;
 import org.folio.inventory.storage.external.CqlQuery;
+import org.folio.inventory.storage.external.HoldingsRepository;
 import org.folio.inventory.storage.external.MultipleRecordsFetchClient;
 import org.folio.inventory.support.JsonArrayHelper;
 import org.folio.inventory.support.http.client.Response;
@@ -339,8 +341,8 @@ public class Instances extends AbstractInstances {
 
   private CompletableFuture<Instance> setBoundWithFlag (Success<Instance> success, RoutingContext routingContext, WebContext webContext) {
     Instance instance = success.getResult();
-    return findBoundWithHoldingsIdsForInstanceId(instance.getId(), routingContext, webContext).thenCompose(
-      boundWithHoldings -> {
+    return findBoundWithHoldingsIdsForInstanceId(instance.getId(), routingContext, webContext)
+      .thenCompose(boundWithHoldings -> {
         instance.setIsBoundWith(boundWithHoldings != null && !boundWithHoldings.isEmpty());
         return completedFuture(instance);
       }
@@ -415,17 +417,17 @@ public class Instances extends AbstractInstances {
    */
   private CompletableFuture<List<String>> findBoundWithHoldingsIdsForInstanceId(
     String instanceId, RoutingContext routingContext, WebContext webContext ) {
-    CompletableFuture<Response> holdingsFuture = new CompletableFuture<>();
 
-    createHoldingsStorageClient(routingContext, webContext).getAll("instanceId=="+instanceId, holdingsFuture::complete);
-    return holdingsFuture.thenCompose(
-      response -> {
-        List<String> holdingsRecordsList =
-          response.getJson().getJsonArray("holdingsRecords")
-            .stream().map(o -> ((JsonObject) o).getString("id")).collect(Collectors.toList());
-        return checkHoldingsForBoundWith(holdingsRecordsList, routingContext, webContext);
-      }
-    );
+    final var holdingsStorageClient = createHoldingsStorageClient(
+      routingContext, webContext);
+
+    final var holdingsRepository = new HoldingsRepository(holdingsStorageClient);
+
+    return holdingsRepository.findForInstance(instanceId)
+      .thenApply(holdings -> holdings.toKeys(Holding::getId))
+      .thenApply(ArrayList::new)
+      .thenCompose(holdingsRecordsList ->
+        checkHoldingsForBoundWith(holdingsRecordsList, routingContext, webContext));
   }
 
   /**
@@ -437,10 +439,10 @@ public class Instances extends AbstractInstances {
    * @return List of IDs for holdings records that are bound with others.
    */
   private CompletableFuture<List<String>> checkHoldingsForBoundWith(
-                                              List<String> holdingsRecordIds,
-                                              RoutingContext routingContext,
-                                              WebContext webContext) {
-    List<String> holdingsRecordsThatAreBoundWith = new ArrayList<>();
+    List<String> holdingsRecordIds, RoutingContext routingContext,
+    WebContext webContext) {
+
+    final var holdingsRecordsThatAreBoundWith = new ArrayList<String>();
     String holdingsRecordIdKey = "holdingsRecordId";
     // Check if any IDs in the list of holdings appears in bound-with-parts
     final var boundWithPartsClient = createBoundWithPartsClient(routingContext,

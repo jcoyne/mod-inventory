@@ -21,6 +21,15 @@ public class MultipleRecordsFetchClient {
   private final String collectionPropertyName;
   private final int expectedStatus;
 
+  public MultipleRecordsFetchClient(CollectionResourceClient resourceClient,
+    String collectionPropertyName) {
+
+    this.resourceClient = resourceClient;
+    this.collectionPropertyName = collectionPropertyName;
+    this.partitionSize = DEFAULT_PARTITION_SIZE;
+    this.expectedStatus = 200;
+  }
+
   private MultipleRecordsFetchClient(Builder builder) {
     this.resourceClient = builder.collectionResourceClient;
     this.partitionSize = builder.partitionSize;

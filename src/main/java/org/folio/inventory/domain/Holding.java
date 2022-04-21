@@ -10,4 +10,8 @@ public class Holding {
     this.instanceId = instanceId;
     this.permanentLocationId = permanentLocationId;
   }
+
+  public String getId() {
+    return id;
+  }
 }
