@@ -451,17 +451,10 @@ public class Instances extends AbstractInstances {
 
     final var boundWithPartsRepository = new BoundWithPartsRepository(boundWithPartsClient);
 
-    return MultipleRecordsFetchClient
-      .builder()
-      .withCollectionPropertyName("boundWithParts")
-      .withExpectedStatus(200)
-      .withCollectionResourceClient(boundWithPartsClient)
-      .build()
-      .find(holdingsRecordIds, this::cqlMatchAnyByHoldingsRecordIds)
+    return boundWithPartsRepository.findForHoldings(holdingsRecordIds)
       .thenCompose( boundWithParts -> {
-          holdingsRecordsThatAreBoundWith.addAll(boundWithParts.stream()
-           .map( boundWithPart -> boundWithPart.getString( holdingsRecordIdKey ))
-           .collect( Collectors.toList()));
+          holdingsRecordsThatAreBoundWith.addAll(boundWithParts
+            .toKeys(BoundWithPart::getHoldingsRecordId));
            // Check if any of the holdings has an item that appears in bound-with-parts
            // First, find the holdings' items
            return MultipleRecordsFetchClient
@@ -470,7 +463,7 @@ public class Instances extends AbstractInstances {
              .withExpectedStatus( 200 )
              .withCollectionResourceClient( createItemsStorageClient( routingContext, webContext ) )
              .build()
-             .find( holdingsRecordIds, this::cqlMatchAnyByHoldingsRecordIds)
+             .find( holdingsRecordIds, Instances::cqlMatchAnyByHoldingsRecordIds)
              .thenCompose(
                items -> {
                  List<String> itemIds = new ArrayList<>();
@@ -480,7 +473,7 @@ public class Instances extends AbstractInstances {
                    itemIds.add(item.getString( "id" ));
                  }
                  // Then look up the items in bound-with-parts
-                 return boundWithPartsRepository.fetchForItems(itemIds)
+                 return boundWithPartsRepository.findForItems(itemIds)
                    .thenCompose( boundWithParts2 ->
                    {
                      final var boundWithItemIds = boundWithParts2.toKeys(
@@ -690,7 +683,8 @@ public class Instances extends AbstractInstances {
     return CqlQuery.exactMatchAny(INSTANCE_ID, instanceIds);
   }
 
-  private CqlQuery cqlMatchAnyByHoldingsRecordIds(List<String> holdingsRecordIds) {
+  public static CqlQuery cqlMatchAnyByHoldingsRecordIds(
+    List<String> holdingsRecordIds) {
     return CqlQuery.exactMatchAny("holdingsRecordId", holdingsRecordIds);
   }
 
