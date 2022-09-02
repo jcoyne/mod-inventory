@@ -6,13 +6,14 @@ import static org.apache.http.HttpHeaders.ACCEPT;
 import static org.apache.http.HttpHeaders.CONTENT_TYPE;
 import static org.apache.http.HttpHeaders.LOCATION;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.buffer.Buffer;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpRequest;
-import io.vertx.ext.web.client.HttpResponse;
-import io.vertx.ext.web.client.WebClient;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -23,13 +24,14 @@ import org.folio.inventory.common.domain.Success;
 import org.folio.inventory.support.JsonArrayHelper;
 import org.folio.inventory.support.http.client.Response;
 import org.folio.util.PercentCodec;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
+
+import io.vertx.core.AsyncResult;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.HttpRequest;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
 
 abstract class ExternalStorageModuleCollection<T> {
   private static final String TENANT_HEADER = "X-Okapi-Tenant";
@@ -43,6 +45,8 @@ abstract class ExternalStorageModuleCollection<T> {
   private final String token;
   private final String collectionWrapperPropertyName;
   protected final WebClient webClient;
+
+  private Function<T, String> mapToId = this::getId;
 
   ExternalStorageModuleCollection(
     String storageAddress,
@@ -173,7 +177,7 @@ abstract class ExternalStorageModuleCollection<T> {
                      Consumer<Success<Void>> completionCallback,
                      Consumer<Failure> failureCallback) {
 
-    String location = individualRecordLocation(getId(item));
+    String location = individualRecordLocation(mapToId.apply(item));
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
