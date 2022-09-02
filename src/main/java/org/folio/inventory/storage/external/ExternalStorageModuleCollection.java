@@ -62,6 +62,22 @@ abstract class ExternalStorageModuleCollection<T> {
     this.webClient = WebClient.wrap(client);
   }
 
+  ExternalStorageModuleCollection(
+    String storageAddress,
+    String tenant,
+    String token,
+    String collectionWrapperPropertyName,
+    HttpClient client,
+    Function<T, String> mapToId) {
+
+    this.storageAddress = storageAddress;
+    this.tenant = tenant;
+    this.token = token;
+    this.collectionWrapperPropertyName = collectionWrapperPropertyName;
+    this.webClient = WebClient.wrap(client);
+    this.mapToId = mapToId;
+  }
+
   protected abstract JsonObject mapToRequest(T record);
 
   protected abstract T mapFromJson(JsonObject fromServer);

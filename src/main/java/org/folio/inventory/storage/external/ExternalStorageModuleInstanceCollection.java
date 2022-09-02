@@ -43,7 +43,8 @@ class ExternalStorageModuleInstanceCollection
     HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "instance-storage/instances"),
-      tenant, token, "instances", client);
+      tenant, token, "instances", client,
+      Instance::getId);
 
     batchAddress = String.format("%s/%s", baseAddress, "instance-storage/batch/instances");
   }

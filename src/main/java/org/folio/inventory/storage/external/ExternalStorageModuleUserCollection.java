@@ -18,7 +18,8 @@ class ExternalStorageModuleUserCollection
     HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "users"),
-      tenant, token, "users", client);
+      tenant, token, "users", client,
+      User::getId);
   }
 
   @Override

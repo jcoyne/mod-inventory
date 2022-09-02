@@ -2,15 +2,15 @@ package org.folio.inventory.storage.external;
 
 import java.io.IOException;
 
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import org.folio.Authority;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.inventory.domain.AuthorityRecordCollection;
 import org.folio.inventory.validation.exceptions.JsonMappingException;
+
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.json.JsonObject;
 
 public class ExternalStorageModuleAuthorityRecordCollection
   extends ExternalStorageModuleCollection<Authority>
@@ -18,14 +18,12 @@ public class ExternalStorageModuleAuthorityRecordCollection
 
   private static final Logger LOGGER = LogManager.getLogger(ExternalStorageModuleAuthorityRecordCollection.class);
 
-  ExternalStorageModuleAuthorityRecordCollection(
-    String baseAddress,
-    String tenant,
-    String token,
-    HttpClient client) {
+  ExternalStorageModuleAuthorityRecordCollection(String baseAddress,
+    String tenant, String token, HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "authority-storage/authorities"),
-      tenant, token, "authorities", client);
+      tenant, token, "authorities", client,
+      Authority::getId);
   }
 
   @Override

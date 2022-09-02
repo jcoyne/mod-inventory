@@ -15,7 +15,8 @@ class ExternalStorageModuleItemCollection
     String token, HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "item-storage/items"),
-      tenant, token, "items", client);
+      tenant, token, "items", client,
+      Item::getId);
   }
 
   @Override

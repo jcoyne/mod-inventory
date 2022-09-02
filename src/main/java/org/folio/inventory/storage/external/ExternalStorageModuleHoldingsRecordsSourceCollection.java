@@ -25,7 +25,8 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollection
     HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "holdings-sources"),
-      tenant, token, "holdingsRecordsSources", client);
+      tenant, token, "holdingsRecordsSources", client,
+      HoldingsRecordsSource::getId);
   }
 
   @Override

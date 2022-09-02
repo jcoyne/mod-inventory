@@ -18,7 +18,8 @@ class ExternalStorageModuleHoldingCollection
                                          HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "holdings-storage/holdings"),
-      tenant, token, "holdingsRecords", client);
+      tenant, token, "holdingsRecords", client,
+      Holding::getId);
   }
 
   @Override
