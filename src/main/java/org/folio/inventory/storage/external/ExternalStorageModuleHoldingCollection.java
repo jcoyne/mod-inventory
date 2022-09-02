@@ -25,14 +25,22 @@ class ExternalStorageModuleHoldingCollection
     return holdingToSend;
   }
 
+  public static Holding mapFromJsonStatic(JsonObject holdingFromServer) {
+    return new Holding(
+      holdingFromServer.getString("id"),
+      holdingFromServer.getString("instanceId"),
+      holdingFromServer.getString("permanentLocationId"));
+  }
+
   ExternalStorageModuleHoldingCollection(String baseAddress,
-                                         String tenant,
-                                         String token,
-                                         HttpClient client) {
+    String tenant,
+    String token,
+    HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "holdings-storage/holdings"),
       tenant, token, "holdingsRecords", client,
-      Holding::getId, ExternalStorageModuleHoldingCollection::mapToRequest);
+      Holding::getId, ExternalStorageModuleHoldingCollection::mapToRequest,
+      ExternalStorageModuleHoldingCollection::mapFromJsonStatic);
   }
 
   @Override
@@ -42,5 +50,4 @@ class ExternalStorageModuleHoldingCollection
       holdingFromServer.getString("instanceId"),
       holdingFromServer.getString("permanentLocationId"));
   }
-
 }

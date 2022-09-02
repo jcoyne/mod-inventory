@@ -40,6 +40,11 @@ class ExternalStorageModuleInstanceCollection
     return instance.getJsonForStorage();
   }
 
+  public static Instance mapFromResponse(JsonObject instanceFromServer) {
+    return Instance.fromJson(instanceFromServer)
+      .setMetadata(new Metadata(instanceFromServer.getJsonObject("metadata")));
+  }
+
   ExternalStorageModuleInstanceCollection(
     String baseAddress,
     String tenant,
@@ -48,7 +53,8 @@ class ExternalStorageModuleInstanceCollection
 
     super(String.format("%s/%s", baseAddress, "instance-storage/instances"),
       tenant, token, "instances", client,
-      Instance::getId, ExternalStorageModuleInstanceCollection::mapToRequest);
+      Instance::getId, ExternalStorageModuleInstanceCollection::mapToRequest,
+      ExternalStorageModuleInstanceCollection::mapFromResponse);
 
     batchAddress = String.format("%s/%s", baseAddress, "instance-storage/batch/instances");
   }

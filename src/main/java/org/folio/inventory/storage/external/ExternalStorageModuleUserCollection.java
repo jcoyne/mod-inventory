@@ -27,6 +27,14 @@ class ExternalStorageModuleUserCollection
     return userJson;
   }
 
+  public static User mapFromResponse(JsonObject userJson) {
+    JsonObject personalJson = userJson.getJsonObject("personal");
+    Personal personal = new Personal(personalJson.getString("lastName"),
+      personalJson.getString("firstName"));
+
+    return new User(userJson.getString("id"), personal);
+  }
+
   ExternalStorageModuleUserCollection(
     String baseAddress,
     String tenant,
@@ -35,7 +43,8 @@ class ExternalStorageModuleUserCollection
 
     super(String.format("%s/%s", baseAddress, "users"),
       tenant, token, "users", client,
-      User::getId, ExternalStorageModuleUserCollection::mapToRequest);
+      User::getId, ExternalStorageModuleUserCollection::mapToRequest,
+      ExternalStorageModuleUserCollection::mapFromResponse);
   }
 
   @Override
@@ -46,5 +55,4 @@ class ExternalStorageModuleUserCollection
 
     return new User(userJson.getString("id"), personal);
   }
-
 }

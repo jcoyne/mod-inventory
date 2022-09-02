@@ -27,13 +27,23 @@ public class ExternalStorageModuleAuthorityRecordCollection
     }
   }
 
+  public static Authority mapFromJsonStatic(JsonObject authorityFromServer) {
+    try {
+      return ObjectMapperTool.getMapper().readValue(authorityFromServer.encode(), Authority.class);
+    } catch (IOException e) {
+      LOGGER.error(e);
+      throw new JsonMappingException("Can`t map json to 'Authority' entity", e);
+    }
+  }
+
   ExternalStorageModuleAuthorityRecordCollection(String baseAddress,
     String tenant, String token, HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "authority-storage/authorities"),
       tenant, token, "authorities", client,
       Authority::getId,
-      ExternalStorageModuleAuthorityRecordCollection::mapToRequest);
+      ExternalStorageModuleAuthorityRecordCollection::mapToRequest,
+      ExternalStorageModuleAuthorityRecordCollection::mapFromJsonStatic);
   }
 
   @Override
@@ -45,5 +55,4 @@ public class ExternalStorageModuleAuthorityRecordCollection
       throw new JsonMappingException("Can`t map json to 'Authority' entity", e);
     }
   }
-
 }

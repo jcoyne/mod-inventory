@@ -46,7 +46,7 @@ abstract class ExternalStorageModuleCollection<T> {
   protected final WebClient webClient;
   private final Function<T, String> mapToId;
   protected final Function<T, JsonObject> mapToRequest;
-  protected Function<JsonObject, T> mapFromResponse = this::mapFromJson;
+  protected final Function<JsonObject, T> mapFromResponse;
 
   ExternalStorageModuleCollection(
     String storageAddress,
@@ -55,7 +55,8 @@ abstract class ExternalStorageModuleCollection<T> {
     String collectionWrapperPropertyName,
     HttpClient client,
     Function<T, String> mapToId,
-    Function<T, JsonObject> mapToRequest) {
+    Function<T, JsonObject> mapToRequest,
+    Function<JsonObject, T> mapFromResponse) {
 
     this.storageAddress = storageAddress;
     this.tenant = tenant;
@@ -64,6 +65,7 @@ abstract class ExternalStorageModuleCollection<T> {
     this.webClient = WebClient.wrap(client);
     this.mapToId = mapToId;
     this.mapToRequest = mapToRequest;
+    this.mapFromResponse = mapFromResponse;
   }
 
   protected abstract T mapFromJson(JsonObject fromServer);

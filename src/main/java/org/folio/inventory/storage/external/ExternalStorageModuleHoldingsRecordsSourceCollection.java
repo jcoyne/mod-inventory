@@ -22,6 +22,16 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollection
     return JsonObject.mapFrom(record);
   }
 
+  public static HoldingsRecordsSource mapFromResponse(JsonObject fromServer) {
+    try {
+      return ObjectMapperTool.getMapper()
+        .readValue(fromServer.encode(), HoldingsRecordsSource.class);
+    } catch (IOException e) {
+      LOGGER.error(e);
+      throw new JsonMappingException("Can`t map json to 'holdingsRecordsSources' entity", e);
+    }
+  }
+
   ExternalStorageModuleHoldingsRecordsSourceCollection(
     String baseAddress,
     String tenant,
@@ -31,7 +41,8 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollection
     super(String.format("%s/%s", baseAddress, "holdings-sources"),
       tenant, token, "holdingsRecordsSources", client,
       HoldingsRecordsSource::getId,
-      ExternalStorageModuleHoldingsRecordsSourceCollection::mapToRequest);
+      ExternalStorageModuleHoldingsRecordsSourceCollection::mapToRequest,
+      ExternalStorageModuleHoldingsRecordsSourceCollection::mapFromResponse);
   }
 
   @Override
