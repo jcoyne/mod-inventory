@@ -4,6 +4,7 @@ import static org.folio.inventory.common.FutureAssistance.fail;
 import static org.folio.inventory.common.FutureAssistance.getOnCompletion;
 import static org.folio.inventory.common.FutureAssistance.succeed;
 import static org.folio.inventory.common.FutureAssistance.waitForCompletion;
+import static org.folio.inventory.storage.external.ExternalStorageModuleAuthorityRecordCollection.mapToRequest;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -62,7 +63,7 @@ public class ExternalStorageModuleAuthorityRecordCollectionExamples extends Exte
       .withVersion(VERSION)
       .withCorporateName(CORPORATE_NAME);
 
-    JsonObject jsonObject = storage.mapToRequest(authority);
+    JsonObject jsonObject = mapToRequest(authority);
     assertNotNull(jsonObject);
     assertEquals(AUTHORITY_ID, jsonObject.getString("id"));
     assertEquals(VERSION.toString(), jsonObject.getString("_version"));

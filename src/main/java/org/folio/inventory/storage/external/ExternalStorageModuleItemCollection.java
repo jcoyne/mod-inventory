@@ -16,7 +16,7 @@ class ExternalStorageModuleItemCollection
 
     super(String.format("%s/%s", baseAddress, "item-storage/items"),
       tenant, token, "items", client,
-      Item::getId);
+      Item::getId, ItemUtil::toStoredItemRepresentation);
   }
 
   @Override
@@ -24,8 +24,4 @@ class ExternalStorageModuleItemCollection
     return ItemUtil.fromStoredItemRepresentation(itemFromServer);
   }
 
-  @Override
-  protected JsonObject mapToRequest(Item item) {
-    return ItemUtil.toStoredItemRepresentation(item);
-  }
 }

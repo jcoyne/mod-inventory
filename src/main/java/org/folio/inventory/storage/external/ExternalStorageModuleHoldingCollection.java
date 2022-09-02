@@ -12,6 +12,19 @@ class ExternalStorageModuleHoldingCollection
   extends ExternalStorageModuleCollection<Holding>
   implements HoldingCollection {
 
+  private static JsonObject mapToRequest(Holding holding) {
+    JsonObject holdingToSend = new JsonObject();
+
+    holdingToSend.put("id", holding.id != null
+      ? holding.id
+      : UUID.randomUUID().toString());
+
+    includeIfPresent(holdingToSend, "instanceId", holding.instanceId);
+    includeIfPresent(holdingToSend, "permanentLocationId", holding.permanentLocationId);
+
+    return holdingToSend;
+  }
+
   ExternalStorageModuleHoldingCollection(String baseAddress,
                                          String tenant,
                                          String token,
@@ -19,7 +32,7 @@ class ExternalStorageModuleHoldingCollection
 
     super(String.format("%s/%s", baseAddress, "holdings-storage/holdings"),
       tenant, token, "holdingsRecords", client,
-      Holding::getId);
+      Holding::getId, ExternalStorageModuleHoldingCollection::mapToRequest);
   }
 
   @Override
@@ -30,18 +43,4 @@ class ExternalStorageModuleHoldingCollection
       holdingFromServer.getString("permanentLocationId"));
   }
 
-  @Override
-  protected JsonObject mapToRequest(Holding holding) {
-    JsonObject holdingToSend = new JsonObject();
-
-    //TODO: Review if this shouldn't be defaulting here
-    holdingToSend.put("id", holding.id != null
-      ? holding.id
-      : UUID.randomUUID().toString());
-
-    includeIfPresent(holdingToSend, "instanceId", holding.instanceId);
-    includeIfPresent(holdingToSend, "permanentLocationId", holding.permanentLocationId);
-
-    return holdingToSend;
-  }
 }

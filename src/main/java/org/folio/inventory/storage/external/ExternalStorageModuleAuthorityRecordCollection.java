@@ -18,12 +18,22 @@ public class ExternalStorageModuleAuthorityRecordCollection
 
   private static final Logger LOGGER = LogManager.getLogger(ExternalStorageModuleAuthorityRecordCollection.class);
 
+  public static JsonObject mapToRequest(Authority authority) {
+    try {
+      return JsonObject.mapFrom(authority);
+    } catch (Exception e) {
+      LOGGER.error(e);
+      throw new JsonMappingException("Can`t map 'Authority' entity to json", e);
+    }
+  }
+
   ExternalStorageModuleAuthorityRecordCollection(String baseAddress,
     String tenant, String token, HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "authority-storage/authorities"),
       tenant, token, "authorities", client,
-      Authority::getId);
+      Authority::getId,
+      ExternalStorageModuleAuthorityRecordCollection::mapToRequest);
   }
 
   @Override
@@ -36,13 +46,4 @@ public class ExternalStorageModuleAuthorityRecordCollection
     }
   }
 
-  @Override
-  protected JsonObject mapToRequest(Authority authority) {
-    try {
-      return JsonObject.mapFrom(authority);
-    } catch (Exception e) {
-      LOGGER.error(e);
-      throw new JsonMappingException("Can`t map 'Authority' entity to json", e);
-    }
-  }
 }

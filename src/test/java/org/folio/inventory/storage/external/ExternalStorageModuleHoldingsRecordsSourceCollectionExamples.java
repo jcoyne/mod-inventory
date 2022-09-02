@@ -1,5 +1,6 @@
 package org.folio.inventory.storage.external;
 
+import static org.folio.inventory.storage.external.ExternalStorageModuleHoldingsRecordsSourceCollection.mapToRequest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -46,7 +47,7 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollectionExamples extend
       .withId(sourceId)
       .withName(name);
 
-    JsonObject jsonObject = storage.mapToRequest(holdingsRecordsSource);
+    JsonObject jsonObject = mapToRequest(holdingsRecordsSource);
     assertNotNull(jsonObject);
     assertEquals(sourceId, jsonObject.getString("id"));
     assertEquals(name, jsonObject.getString("name"));

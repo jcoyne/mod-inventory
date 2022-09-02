@@ -36,6 +36,10 @@ class ExternalStorageModuleInstanceCollection
 
   private final String batchAddress;
 
+  private static JsonObject mapToRequest(Instance instance) {
+    return instance.getJsonForStorage();
+  }
+
   ExternalStorageModuleInstanceCollection(
     String baseAddress,
     String tenant,
@@ -44,14 +48,9 @@ class ExternalStorageModuleInstanceCollection
 
     super(String.format("%s/%s", baseAddress, "instance-storage/instances"),
       tenant, token, "instances", client,
-      Instance::getId);
+      Instance::getId, ExternalStorageModuleInstanceCollection::mapToRequest);
 
     batchAddress = String.format("%s/%s", baseAddress, "instance-storage/batch/instances");
-  }
-
-  @Override
-  protected JsonObject mapToRequest(Instance instance) {
-    return instance.getJsonForStorage();
   }
 
   @Override

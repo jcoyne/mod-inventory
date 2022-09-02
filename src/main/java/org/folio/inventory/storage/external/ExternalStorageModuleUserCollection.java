@@ -11,6 +11,22 @@ class ExternalStorageModuleUserCollection
   extends ExternalStorageModuleCollection<User>
   implements UserCollection {
 
+  private static JsonObject mapToRequest(User user) {
+    final var personal = user.getPersonal();
+
+    final var personalJson = new JsonObject();
+
+    includeIfPresent(personalJson, "lastName", personal.getLastName());
+    includeIfPresent(personalJson,"firstName", personal.getFirstName());
+
+    final var userJson = new JsonObject();
+
+    includeIfPresent(userJson,"id", user.getId());
+    includeIfPresent(userJson,"personal", personalJson);
+
+    return userJson;
+  }
+
   ExternalStorageModuleUserCollection(
     String baseAddress,
     String tenant,
@@ -19,7 +35,7 @@ class ExternalStorageModuleUserCollection
 
     super(String.format("%s/%s", baseAddress, "users"),
       tenant, token, "users", client,
-      User::getId);
+      User::getId, ExternalStorageModuleUserCollection::mapToRequest);
   }
 
   @Override
@@ -31,15 +47,4 @@ class ExternalStorageModuleUserCollection
     return new User(userJson.getString("id"), personal);
   }
 
-  @Override
-  protected JsonObject mapToRequest(User user) {
-    Personal personal = user.getPersonal();
-    JsonObject personalJson = new JsonObject()
-      .put("lastName", personal.getLastName())
-      .put("firstName", personal.getFirstName());
-
-    return new JsonObject()
-      .put("id", user.getId())
-      .put("personal", personalJson);
-  }
 }

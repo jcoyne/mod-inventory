@@ -39,30 +39,13 @@ abstract class ExternalStorageModuleCollection<T> {
 
   private static final Logger LOGGER = LogManager.getLogger(ExternalStorageModuleCollection.class);
 
-
   private final String storageAddress;
   private final String tenant;
   private final String token;
   private final String collectionWrapperPropertyName;
   protected final WebClient webClient;
   private final Function<T, String> mapToId;
-  protected Function<T, JsonObject> mapToRequest = this::mapToRequest;
-
-  ExternalStorageModuleCollection(
-    String storageAddress,
-    String tenant,
-    String token,
-    String collectionWrapperPropertyName,
-    HttpClient client,
-    Function<T, String> mapToId) {
-
-    this.storageAddress = storageAddress;
-    this.tenant = tenant;
-    this.token = token;
-    this.collectionWrapperPropertyName = collectionWrapperPropertyName;
-    this.webClient = WebClient.wrap(client);
-    this.mapToId = mapToId;
-  }
+  protected final Function<T, JsonObject> mapToRequest;
 
   ExternalStorageModuleCollection(
     String storageAddress,
@@ -81,8 +64,6 @@ abstract class ExternalStorageModuleCollection<T> {
     this.mapToId = mapToId;
     this.mapToRequest = mapToRequest;
   }
-
-  protected abstract JsonObject mapToRequest(T record);
 
   protected abstract T mapFromJson(JsonObject fromServer);
 
@@ -219,10 +200,8 @@ abstract class ExternalStorageModuleCollection<T> {
     return String.format("%s/%s", storageAddress, id);
   }
 
-  void includeIfPresent(
-    JsonObject instanceToSend,
-    String propertyName,
-    String propertyValue) {
+  public static <T>  void includeIfPresent(JsonObject instanceToSend,
+    String propertyName, T propertyValue) {
 
     if (propertyValue != null) {
       instanceToSend.put(propertyName, propertyValue);

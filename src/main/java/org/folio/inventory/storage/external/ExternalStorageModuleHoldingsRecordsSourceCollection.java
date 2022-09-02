@@ -18,6 +18,10 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollection
 
   private static final Logger LOGGER = LogManager.getLogger(ExternalStorageModuleHoldingsRecordsSourceCollection.class);
 
+  public static JsonObject mapToRequest(HoldingsRecordsSource record) {
+    return JsonObject.mapFrom(record);
+  }
+
   ExternalStorageModuleHoldingsRecordsSourceCollection(
     String baseAddress,
     String tenant,
@@ -26,12 +30,8 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollection
 
     super(String.format("%s/%s", baseAddress, "holdings-sources"),
       tenant, token, "holdingsRecordsSources", client,
-      HoldingsRecordsSource::getId);
-  }
-
-  @Override
-  protected JsonObject mapToRequest(HoldingsRecordsSource record) {
-      return JsonObject.mapFrom(record);
+      HoldingsRecordsSource::getId,
+      ExternalStorageModuleHoldingsRecordsSourceCollection::mapToRequest);
   }
 
   @Override
@@ -43,5 +43,4 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollection
       throw new JsonMappingException("Can`t map json to 'holdingsRecordsSources' entity", e);
     }
   }
-
 }
