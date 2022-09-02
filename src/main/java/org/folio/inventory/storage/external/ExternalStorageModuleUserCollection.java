@@ -47,12 +47,4 @@ class ExternalStorageModuleUserCollection
       ExternalStorageModuleUserCollection::mapFromResponse);
   }
 
-  @Override
-  protected User mapFromJson(JsonObject userJson) {
-    JsonObject personalJson = userJson.getJsonObject("personal");
-    Personal personal = new Personal(personalJson.getString("lastName"),
-                                     personalJson.getString("firstName"));
-
-    return new User(userJson.getString("id"), personal);
-  }
 }

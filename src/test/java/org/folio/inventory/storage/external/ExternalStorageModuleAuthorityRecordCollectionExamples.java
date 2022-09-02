@@ -4,6 +4,7 @@ import static org.folio.inventory.common.FutureAssistance.fail;
 import static org.folio.inventory.common.FutureAssistance.getOnCompletion;
 import static org.folio.inventory.common.FutureAssistance.succeed;
 import static org.folio.inventory.common.FutureAssistance.waitForCompletion;
+import static org.folio.inventory.storage.external.ExternalStorageModuleAuthorityRecordCollection.mapFromResponse;
 import static org.folio.inventory.storage.external.ExternalStorageModuleAuthorityRecordCollection.mapToRequest;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -41,7 +42,7 @@ public class ExternalStorageModuleAuthorityRecordCollectionExamples extends Exte
       .put("_version", VERSION)
       .put("corporateName", CORPORATE_NAME);
 
-    Authority authority = storage.mapFromJson(authorityRecord);
+    Authority authority = mapFromResponse(authorityRecord);
     assertNotNull(authority);
     assertEquals(AUTHORITY_ID, authority.getId());
     assertEquals(VERSION, authority.getVersion());
@@ -53,7 +54,7 @@ public class ExternalStorageModuleAuthorityRecordCollectionExamples extends Exte
     JsonObject holdingsRecord = new JsonObject()
       .put("_version", "wrongFormat");
 
-    storage.mapFromJson(holdingsRecord);
+    mapFromResponse(holdingsRecord);
   }
 
   @Test

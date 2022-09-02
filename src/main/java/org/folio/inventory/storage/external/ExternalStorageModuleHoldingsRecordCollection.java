@@ -49,13 +49,4 @@ class ExternalStorageModuleHoldingsRecordCollection
       ExternalStorageModuleHoldingsRecordCollection::mapFromResponse);
   }
 
-  @Override
-  protected HoldingsRecord mapFromJson(JsonObject holdingFromServer) {
-    try {
-      return ObjectMapperTool.getMapper().readValue(holdingFromServer.encode(), HoldingsRecord.class);
-    } catch (IOException e) {
-      LOGGER.error(e);
-      throw new JsonMappingException("Can`t map json to 'Holdingsrecord' entity", e);
-    }
-  }
 }

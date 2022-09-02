@@ -27,7 +27,7 @@ public class ExternalStorageModuleAuthorityRecordCollection
     }
   }
 
-  public static Authority mapFromJsonStatic(JsonObject authorityFromServer) {
+  public static Authority mapFromResponse(JsonObject authorityFromServer) {
     try {
       return ObjectMapperTool.getMapper().readValue(authorityFromServer.encode(), Authority.class);
     } catch (IOException e) {
@@ -43,16 +43,7 @@ public class ExternalStorageModuleAuthorityRecordCollection
       tenant, token, "authorities", client,
       Authority::getId,
       ExternalStorageModuleAuthorityRecordCollection::mapToRequest,
-      ExternalStorageModuleAuthorityRecordCollection::mapFromJsonStatic);
+      ExternalStorageModuleAuthorityRecordCollection::mapFromResponse);
   }
 
-  @Override
-  protected Authority mapFromJson(JsonObject authorityFromServer) {
-    try {
-      return ObjectMapperTool.getMapper().readValue(authorityFromServer.encode(), Authority.class);
-    } catch (IOException e) {
-      LOGGER.error(e);
-      throw new JsonMappingException("Can`t map json to 'Authority' entity", e);
-    }
-  }
 }

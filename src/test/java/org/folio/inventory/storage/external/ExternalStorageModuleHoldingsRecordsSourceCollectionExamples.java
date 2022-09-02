@@ -1,5 +1,6 @@
 package org.folio.inventory.storage.external;
 
+import static org.folio.inventory.storage.external.ExternalStorageModuleHoldingsRecordsSourceCollection.mapFromResponse;
 import static org.folio.inventory.storage.external.ExternalStorageModuleHoldingsRecordsSourceCollection.mapToRequest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -25,7 +26,7 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollectionExamples extend
       .put("id", sourceId)
       .put("name", name);
 
-    HoldingsRecordsSource source = storage.mapFromJson(holdingsRecordsSource);
+    HoldingsRecordsSource source = mapFromResponse(holdingsRecordsSource);
     assertNotNull(source);
     assertEquals(sourceId, source.getId());
     assertEquals(name, source.getName());
@@ -36,7 +37,7 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollectionExamples extend
     JsonObject holdingsRecordsSource = new JsonObject()
       .put("testField", "testValue");
 
-    storage.mapFromJson(holdingsRecordsSource);
+    mapFromResponse(holdingsRecordsSource);
   }
 
   @Test

@@ -68,8 +68,6 @@ abstract class ExternalStorageModuleCollection<T> {
     this.mapFromResponse = mapFromResponse;
   }
 
-  protected abstract T mapFromJson(JsonObject fromServer);
-
   public void add(T item,
                   Consumer<Success<T>> resultCallback,
                   Consumer<Failure> failureCallback) {

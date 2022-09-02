@@ -5,7 +5,6 @@ import org.folio.inventory.domain.items.ItemCollection;
 import org.folio.inventory.support.ItemUtil;
 
 import io.vertx.core.http.HttpClient;
-import io.vertx.core.json.JsonObject;
 
 class ExternalStorageModuleItemCollection
   extends ExternalStorageModuleCollection<Item>
@@ -20,8 +19,4 @@ class ExternalStorageModuleItemCollection
       ItemUtil::fromStoredItemRepresentation);
   }
 
-  @Override
-  protected Item mapFromJson(JsonObject itemFromServer) {
-    return ItemUtil.fromStoredItemRepresentation(itemFromServer);
-  }
 }

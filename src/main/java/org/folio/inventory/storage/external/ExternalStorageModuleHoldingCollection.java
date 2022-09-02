@@ -43,11 +43,4 @@ class ExternalStorageModuleHoldingCollection
       ExternalStorageModuleHoldingCollection::mapFromJsonStatic);
   }
 
-  @Override
-  protected Holding mapFromJson(JsonObject holdingFromServer) {
-    return new Holding(
-      holdingFromServer.getString("id"),
-      holdingFromServer.getString("instanceId"),
-      holdingFromServer.getString("permanentLocationId"));
-  }
 }

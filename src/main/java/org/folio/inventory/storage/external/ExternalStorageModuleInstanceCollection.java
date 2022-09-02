@@ -60,12 +60,6 @@ class ExternalStorageModuleInstanceCollection
   }
 
   @Override
-  protected Instance mapFromJson(JsonObject instanceFromServer) {
-    return Instance.fromJson(instanceFromServer)
-      .setMetadata(new Metadata(instanceFromServer.getJsonObject("metadata")));
-  }
-
-  @Override
   public void addBatch(List<Instance> items,
     Consumer<Success<BatchResult<Instance>>> resultCallback, Consumer<Failure> failureCallback) {
 
