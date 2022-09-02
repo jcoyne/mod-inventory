@@ -39,14 +39,6 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollectionExamples extend
   }
 
   @Test
-  public void shouldRetrieveId() {
-    String sourceId = UUID.randomUUID().toString();
-    HoldingsRecordsSource holdingsRecordsSource = new HoldingsRecordsSource()
-      .withId(sourceId);
-    assertEquals(sourceId, storage.getId(holdingsRecordsSource));
-  }
-
-  @Test
   public void shouldMapToRequest() {
     String sourceId = UUID.randomUUID().toString();
     String name = "MARC";

@@ -47,14 +47,6 @@ public class ExternalStorageModuleAuthorityRecordCollectionExamples extends Exte
     assertEquals(CORPORATE_NAME, authority.getCorporateName());
   }
 
-  @Test
-  public void shouldRetrieveId() {
-    String authorityId = UUID.randomUUID().toString();
-    Authority authority = new Authority()
-      .withId(authorityId);
-    assertEquals(authorityId, storage.getId(authority));
-  }
-
   @Test(expected = JsonMappingException.class)
   public void shouldNotMapFromJsonAndThrowException() {
     JsonObject holdingsRecord = new JsonObject()

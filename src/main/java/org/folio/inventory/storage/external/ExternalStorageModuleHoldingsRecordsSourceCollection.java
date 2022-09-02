@@ -44,8 +44,4 @@ public class ExternalStorageModuleHoldingsRecordsSourceCollection
     }
   }
 
-  @Override
-  protected String getId(HoldingsRecordsSource record) {
-    return record.getId();
-  }
 }

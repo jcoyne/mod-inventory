@@ -32,11 +32,6 @@ class ExternalStorageModuleUserCollection
   }
 
   @Override
-  protected String getId(User record) {
-    return record.getId();
-  }
-
-  @Override
   protected JsonObject mapToRequest(User user) {
     Personal personal = user.getPersonal();
     JsonObject personalJson = new JsonObject()

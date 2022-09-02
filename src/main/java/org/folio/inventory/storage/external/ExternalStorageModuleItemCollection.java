@@ -25,11 +25,6 @@ class ExternalStorageModuleItemCollection
   }
 
   @Override
-  protected String getId(Item record) {
-    return record.id;
-  }
-
-  @Override
   protected JsonObject mapToRequest(Item item) {
     return ItemUtil.toStoredItemRepresentation(item);
   }

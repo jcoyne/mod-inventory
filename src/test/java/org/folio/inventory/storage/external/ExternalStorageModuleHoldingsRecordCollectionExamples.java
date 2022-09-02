@@ -42,14 +42,6 @@ public class ExternalStorageModuleHoldingsRecordCollectionExamples extends Exter
   }
 
   @Test
-  public void shouldRetrieveId() {
-    String holdingId = UUID.randomUUID().toString();
-    HoldingsRecord holdingsrecord = new HoldingsRecord()
-      .withId(holdingId);
-    assertEquals(holdingId, storage.getId(holdingsrecord));
-  }
-
-  @Test
   public void shouldMapToRequest() {
     String holdingId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();

@@ -61,11 +61,6 @@ class ExternalStorageModuleInstanceCollection
   }
 
   @Override
-  protected String getId(Instance record) {
-    return record.getId();
-  }
-
-  @Override
   public void addBatch(List<Instance> items,
     Consumer<Success<BatchResult<Instance>>> resultCallback, Consumer<Failure> failureCallback) {
 

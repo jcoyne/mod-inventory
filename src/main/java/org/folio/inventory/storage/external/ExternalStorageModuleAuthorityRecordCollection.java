@@ -37,11 +37,6 @@ public class ExternalStorageModuleAuthorityRecordCollection
   }
 
   @Override
-  protected String getId(Authority authority) {
-    return authority.getId();
-  }
-
-  @Override
   protected JsonObject mapToRequest(Authority authority) {
     try {
       return JsonObject.mapFrom(authority);

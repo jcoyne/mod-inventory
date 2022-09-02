@@ -31,11 +31,6 @@ class ExternalStorageModuleHoldingCollection
   }
 
   @Override
-  protected String getId(Holding record) {
-    return record.id;
-  }
-
-  @Override
   protected JsonObject mapToRequest(Holding holding) {
     JsonObject holdingToSend = new JsonObject();
 
