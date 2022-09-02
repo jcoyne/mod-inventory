@@ -65,7 +65,7 @@ class ExternalStorageModuleInstanceCollection
     Consumer<Success<BatchResult<Instance>>> resultCallback, Consumer<Failure> failureCallback) {
 
     List<JsonObject> jsonList = items.stream()
-      .map(this::mapToRequest)
+      .map(this.mapToRequest)
       .collect(Collectors.toList());
 
     JsonObject batchRequest = new JsonObject()

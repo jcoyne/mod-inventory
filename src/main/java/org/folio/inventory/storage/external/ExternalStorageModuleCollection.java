@@ -45,8 +45,8 @@ abstract class ExternalStorageModuleCollection<T> {
   private final String token;
   private final String collectionWrapperPropertyName;
   protected final WebClient webClient;
-
   private final Function<T, String> mapToId;
+  protected Function<T, JsonObject> mapToRequest = this::mapToRequest;
 
   ExternalStorageModuleCollection(
     String storageAddress,
@@ -64,6 +64,24 @@ abstract class ExternalStorageModuleCollection<T> {
     this.mapToId = mapToId;
   }
 
+  ExternalStorageModuleCollection(
+    String storageAddress,
+    String tenant,
+    String token,
+    String collectionWrapperPropertyName,
+    HttpClient client,
+    Function<T, String> mapToId,
+    Function<T, JsonObject> mapToRequest) {
+
+    this.storageAddress = storageAddress;
+    this.tenant = tenant;
+    this.token = token;
+    this.collectionWrapperPropertyName = collectionWrapperPropertyName;
+    this.webClient = WebClient.wrap(client);
+    this.mapToId = mapToId;
+    this.mapToRequest = mapToRequest;
+  }
+
   protected abstract JsonObject mapToRequest(T record);
 
   protected abstract T mapFromJson(JsonObject fromServer);
@@ -76,7 +94,7 @@ abstract class ExternalStorageModuleCollection<T> {
 
     final HttpRequest<Buffer> request = withStandardHeaders(webClient.postAbs(storageAddress));
 
-    request.sendJsonObject(mapToRequest(item), futureResponse::complete);
+    request.sendJsonObject(mapToRequest.apply(item), futureResponse::complete);
 
     futureResponse
       .thenCompose(this::mapAsyncResultToCompletionStage)
@@ -183,7 +201,7 @@ abstract class ExternalStorageModuleCollection<T> {
 
     final HttpRequest<Buffer> request = withStandardHeaders(webClient.putAbs(location));
 
-    request.sendJsonObject(mapToRequest(item), futureResponse::complete);
+    request.sendJsonObject(mapToRequest.apply(item), futureResponse::complete);
 
     futureResponse
       .thenCompose(this::mapAsyncResultToCompletionStage)
