@@ -46,6 +46,7 @@ abstract class ExternalStorageModuleCollection<T> {
   protected final WebClient webClient;
   private final Function<T, String> mapToId;
   protected final Function<T, JsonObject> mapToRequest;
+  protected Function<JsonObject, T> mapFromResponse = this::mapFromJson;
 
   ExternalStorageModuleCollection(
     String storageAddress,
@@ -82,7 +83,7 @@ abstract class ExternalStorageModuleCollection<T> {
       .thenAccept(response -> {
         if (response.getStatusCode() == 201) {
           try {
-            T created = mapFromJson(response.getJson());
+            T created = mapFromResponse.apply(response.getJson());
             resultCallback.accept(new Success<>(created));
           } catch (Exception e) {
             LOGGER.error(e);
@@ -114,7 +115,7 @@ abstract class ExternalStorageModuleCollection<T> {
             JsonObject instanceFromServer = response.getJson();
 
             try {
-              T found = mapFromJson(instanceFromServer);
+              T found = mapFromResponse.apply(instanceFromServer);
               resultCallback.accept(new Success<>(found));
               break;
             } catch (Exception e) {
@@ -257,7 +258,7 @@ abstract class ExternalStorageModuleCollection<T> {
           wrappedRecords.getJsonArray(collectionWrapperPropertyName));
 
         List<T> foundRecords = records.stream()
-          .map(this::mapFromJson)
+          .map(mapFromResponse)
           .collect(Collectors.toList());
 
         MultipleRecords<T> result = new MultipleRecords<>(
