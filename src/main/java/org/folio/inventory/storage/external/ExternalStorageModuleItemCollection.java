@@ -2,7 +2,6 @@ package org.folio.inventory.storage.external;
 
 import org.folio.inventory.domain.items.Item;
 import org.folio.inventory.domain.items.ItemCollection;
-import org.folio.inventory.support.ItemUtil;
 
 import io.vertx.core.http.HttpClient;
 
@@ -15,8 +14,6 @@ class ExternalStorageModuleItemCollection
 
     super(String.format("%s/%s", baseAddress, "item-storage/items"),
       tenant, token, "items", client,
-      Item::getId, ItemUtil::toStoredItemRepresentation,
-      ItemUtil::fromStoredItemRepresentation);
+      Item::getId, new ItemStorageMapper());
   }
-
 }

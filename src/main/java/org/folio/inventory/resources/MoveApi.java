@@ -25,8 +25,8 @@ import org.folio.inventory.domain.items.ItemCollection;
 import org.folio.inventory.storage.Storage;
 import org.folio.inventory.storage.external.CollectionResourceClient;
 import org.folio.inventory.storage.external.CqlQuery;
+import org.folio.inventory.storage.external.ItemStorageMapper;
 import org.folio.inventory.storage.external.MultipleRecordsFetchClient;
-import org.folio.inventory.support.ItemUtil;
 import org.folio.inventory.support.http.client.OkapiHttpClient;
 import org.folio.inventory.support.http.server.JsonResponse;
 import org.folio.inventory.support.http.server.ServerErrorResponse;
@@ -154,7 +154,7 @@ public class MoveApi extends AbstractInventoryResource {
 
   private List<Item> updateHoldingsRecordIdForItems(String toHoldingsRecordId, List<JsonObject> jsons) {
     return jsons.stream()
-      .map(ItemUtil::fromStoredItemRepresentation)
+      .map(new ItemStorageMapper()::mapFromResponse)
       .map(item -> item.withHoldingId(toHoldingsRecordId))
       .collect(toList());
   }
