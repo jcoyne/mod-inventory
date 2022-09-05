@@ -16,8 +16,6 @@ class ExternalStorageModuleHoldingsRecordCollection
 
     super(String.format("%s/%s", baseAddress, "holdings-storage/holdings"),
       tenant, token, "holdingsRecords", client,
-      HoldingsRecord::getId,
-      new HoldingsRecordStorageMapper()::mapToRequest,
-      new HoldingsRecordStorageMapper()::mapFromResponse);
+      HoldingsRecord::getId, new HoldingsRecordStorageMapper());
   }
 }

@@ -10,22 +10,24 @@ import org.folio.inventory.validation.exceptions.JsonMappingException;
 
 import io.vertx.core.json.JsonObject;
 
-class HoldingsRecordStorageMapper {
+class HoldingsRecordStorageMapper implements StorageMapper<HoldingsRecord> {
   private static final Logger LOGGER = LogManager.getLogger(HoldingsRecordStorageMapper.class);
 
-  JsonObject mapToRequest(HoldingsRecord holding) {
+  @Override
+  public JsonObject mapToRequest(HoldingsRecord entity) {
     try {
-      return JsonObject.mapFrom(holding);
+      return JsonObject.mapFrom(entity);
     } catch (Exception e) {
       LOGGER.error(e);
       throw new JsonMappingException("Can`t map 'Holdingsrecord' entity to json", e);
     }
   }
 
-  HoldingsRecord mapFromResponse(JsonObject holdingFromServer) {
+  @Override
+  public HoldingsRecord mapFromResponse(JsonObject representationFromResponse) {
     try {
       return ObjectMapperTool.getMapper()
-        .readValue(holdingFromServer.encode(), HoldingsRecord.class);
+        .readValue(representationFromResponse.encode(), HoldingsRecord.class);
     } catch (IOException e) {
       LOGGER.error(e);
       throw new JsonMappingException("Can`t map json to 'Holdingsrecord' entity", e);
