@@ -1,41 +1,13 @@
 package org.folio.inventory.storage.external;
 
-import java.io.IOException;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.folio.HoldingsRecord;
-import org.folio.dbschema.ObjectMapperTool;
 import org.folio.inventory.domain.HoldingsRecordCollection;
-import org.folio.inventory.validation.exceptions.JsonMappingException;
 
 import io.vertx.core.http.HttpClient;
-import io.vertx.core.json.JsonObject;
 
 class ExternalStorageModuleHoldingsRecordCollection
   extends ExternalStorageModuleCollection<HoldingsRecord>
   implements HoldingsRecordCollection {
-
-  private static final Logger LOGGER = LogManager.getLogger(ExternalStorageModuleHoldingsRecordCollection.class);
-
-  public static JsonObject mapToRequest(HoldingsRecord holding) {
-    try {
-      return JsonObject.mapFrom(holding);
-    } catch (Exception e) {
-      LOGGER.error(e);
-      throw new JsonMappingException("Can`t map 'Holdingsrecord' entity to json", e);
-    }
-  }
-
-  public static HoldingsRecord mapFromResponse(JsonObject holdingFromServer) {
-    try {
-      return ObjectMapperTool.getMapper()
-        .readValue(holdingFromServer.encode(), HoldingsRecord.class);
-    } catch (IOException e) {
-      LOGGER.error(e);
-      throw new JsonMappingException("Can`t map json to 'Holdingsrecord' entity", e);
-    }
-  }
 
   ExternalStorageModuleHoldingsRecordCollection(String baseAddress,
                                          String tenant,
@@ -45,8 +17,7 @@ class ExternalStorageModuleHoldingsRecordCollection
     super(String.format("%s/%s", baseAddress, "holdings-storage/holdings"),
       tenant, token, "holdingsRecords", client,
       HoldingsRecord::getId,
-      ExternalStorageModuleHoldingsRecordCollection::mapToRequest,
-      ExternalStorageModuleHoldingsRecordCollection::mapFromResponse);
+      new HoldingsRecordStorageMapper()::mapToRequest,
+      new HoldingsRecordStorageMapper()::mapFromResponse);
   }
-
 }
