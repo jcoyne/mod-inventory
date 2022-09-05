@@ -1,21 +1,22 @@
 package org.folio.inventory.storage.external;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.util.UUID;
 
 import org.folio.HoldingsRecord;
 import org.folio.inventory.validation.exceptions.JsonMappingException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import io.vertx.core.json.JsonObject;
 
-public class HoldingsRecordStorageMapperTests {
+class HoldingsRecordStorageMapperTests {
   private final HoldingsRecordStorageMapper mapper = new HoldingsRecordStorageMapper();
 
   @Test
-  public void shouldMapToRequest() {
+  void shouldMapToRequest() {
     String holdingId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
     String permanentLocationId = UUID.randomUUID().toString();
@@ -34,7 +35,7 @@ public class HoldingsRecordStorageMapperTests {
   }
 
   @Test
-  public void shouldMapFromJson() {
+  void shouldMapFromJson() {
     String holdingId = UUID.randomUUID().toString();
     String instanceId = UUID.randomUUID().toString();
     String permanentLocationId = UUID.randomUUID().toString();
@@ -48,14 +49,16 @@ public class HoldingsRecordStorageMapperTests {
     assertNotNull(holdingsrecord);
     assertEquals(holdingId, holdingsrecord.getId());
     assertEquals(instanceId, holdingsrecord.getInstanceId());
-    assertEquals(permanentLocationId, holdingsrecord.getPermanentLocationId());
+    assertEquals(permanentLocationId,
+      holdingsrecord.getPermanentLocationId());
   }
 
-  @Test(expected = JsonMappingException.class)
-  public void shouldNotMapFromJsonAndThrowException() {
+  @Test
+  void shouldNotMapFromJsonAndThrowException() {
     JsonObject holdingsRecord = new JsonObject()
       .put("testField", "testValue");
 
-    mapper.mapFromResponse(holdingsRecord);
+    assertThrows(JsonMappingException.class,
+      () -> mapper.mapFromResponse(holdingsRecord));
   }
 }
