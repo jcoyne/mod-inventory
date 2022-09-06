@@ -4,12 +4,8 @@ import static org.folio.inventory.common.FutureAssistance.fail;
 import static org.folio.inventory.common.FutureAssistance.getOnCompletion;
 import static org.folio.inventory.common.FutureAssistance.succeed;
 import static org.folio.inventory.common.FutureAssistance.waitForCompletion;
-import static org.folio.inventory.storage.external.ExternalStorageModuleAuthorityRecordCollection.mapFromResponse;
-import static org.folio.inventory.storage.external.ExternalStorageModuleAuthorityRecordCollection.mapToRequest;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,56 +16,14 @@ import org.folio.inventory.common.WaitForAllFutures;
 import org.folio.inventory.common.api.request.PagingParameters;
 import org.folio.inventory.common.domain.MultipleRecords;
 import org.folio.inventory.domain.AuthorityRecordCollection;
-import org.folio.inventory.validation.exceptions.JsonMappingException;
 import org.junit.Test;
 
-import io.vertx.core.json.JsonObject;
 import lombok.SneakyThrows;
 
 public class ExternalStorageModuleAuthorityRecordCollectionExamples extends ExternalStorageTests {
-  private static final String AUTHORITY_ID = UUID.randomUUID().toString();
-  private static final String CORPORATE_NAME = UUID.randomUUID().toString();
-  private static final Integer VERSION = 3;
-
   private final ExternalStorageModuleAuthorityRecordCollection storage =
     useHttpClient(client -> new ExternalStorageModuleAuthorityRecordCollection(
       getStorageAddress(), TENANT_ID, TENANT_TOKEN, client));
-
-  @Test
-  public void shouldMapFromJson() {
-    JsonObject authorityRecord = new JsonObject()
-      .put("id", AUTHORITY_ID)
-      .put("_version", VERSION)
-      .put("corporateName", CORPORATE_NAME);
-
-    Authority authority = mapFromResponse(authorityRecord);
-    assertNotNull(authority);
-    assertEquals(AUTHORITY_ID, authority.getId());
-    assertEquals(VERSION, authority.getVersion());
-    assertEquals(CORPORATE_NAME, authority.getCorporateName());
-  }
-
-  @Test(expected = JsonMappingException.class)
-  public void shouldNotMapFromJsonAndThrowException() {
-    JsonObject holdingsRecord = new JsonObject()
-      .put("_version", "wrongFormat");
-
-    mapFromResponse(holdingsRecord);
-  }
-
-  @Test
-  public void shouldMapToRequest() {
-    Authority authority = new Authority()
-      .withId(AUTHORITY_ID)
-      .withVersion(VERSION)
-      .withCorporateName(CORPORATE_NAME);
-
-    JsonObject jsonObject = mapToRequest(authority);
-    assertNotNull(jsonObject);
-    assertEquals(AUTHORITY_ID, jsonObject.getString("id"));
-    assertEquals(VERSION.toString(), jsonObject.getString("_version"));
-    assertEquals(CORPORATE_NAME, jsonObject.getString("corporateName"));
-  }
 
   @Test
   @SneakyThrows
