@@ -15,7 +15,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.inventory.common.domain.Failure;
 import org.folio.inventory.common.domain.Success;
 import org.folio.inventory.domain.BatchResult;
-import org.folio.inventory.domain.Metadata;
 import org.folio.inventory.domain.instances.Instance;
 import org.folio.inventory.domain.instances.InstanceCollection;
 import org.folio.inventory.support.http.client.Response;
@@ -36,15 +35,6 @@ class ExternalStorageModuleInstanceCollection
 
   private final String batchAddress;
 
-  private static JsonObject mapToRequest(Instance instance) {
-    return instance.getJsonForStorage();
-  }
-
-  public static Instance mapFromResponse(JsonObject instanceFromServer) {
-    return Instance.fromJson(instanceFromServer)
-      .setMetadata(new Metadata(instanceFromServer.getJsonObject("metadata")));
-  }
-
   ExternalStorageModuleInstanceCollection(
     String baseAddress,
     String tenant,
@@ -53,8 +43,7 @@ class ExternalStorageModuleInstanceCollection
 
     super(String.format("%s/%s", baseAddress, "instance-storage/instances"),
       tenant, token, "instances", client,
-      Instance::getId, ExternalStorageModuleInstanceCollection::mapToRequest,
-      ExternalStorageModuleInstanceCollection::mapFromResponse);
+      Instance::getId, new InstanceStorageMapper());
 
     batchAddress = String.format("%s/%s", baseAddress, "instance-storage/batch/instances");
   }
