@@ -42,8 +42,8 @@ class ExternalStorageModuleInstanceCollection
     HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "instance-storage/instances"),
-      tenant, token, "instances", client,
-      Instance::getId, new InstanceStorageMapper());
+      "instances", new StandardHeaders(tenant, token),
+      client, Instance::getId, new InstanceStorageMapper());
 
     batchAddress = String.format("%s/%s", baseAddress, "instance-storage/batch/instances");
   }
@@ -62,7 +62,8 @@ class ExternalStorageModuleInstanceCollection
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
-    final HttpRequest<Buffer> request = withStandardHeaders(webClient.postAbs(batchAddress));
+    final HttpRequest<Buffer> request = standardHeaders
+      .applyTo(webClient.postAbs(batchAddress));
 
     request.sendJsonObject(batchRequest, futureResponse::complete);
 

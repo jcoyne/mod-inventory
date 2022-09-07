@@ -16,7 +16,7 @@ class ExternalStorageModuleUserCollection
     HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "users"),
-      tenant, token, "users", client,
-      User::getId, new UserStorageMapper());
+      "users", new StandardHeaders(tenant, token),
+      client, User::getId, new UserStorageMapper());
   }
 }

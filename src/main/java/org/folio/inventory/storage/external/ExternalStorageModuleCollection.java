@@ -1,7 +1,5 @@
 package org.folio.inventory.storage.external;
 
-import static org.apache.http.HttpHeaders.ACCEPT;
-
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -24,56 +22,49 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 
 abstract class ExternalStorageModuleCollection<T> {
-  private static final String TENANT_HEADER = "X-Okapi-Tenant";
-  private static final String TOKEN_HEADER = "X-Okapi-Token";
-
   private static final Logger LOGGER = LogManager.getLogger(ExternalStorageModuleCollection.class);
 
   private final String storageAddress;
-  private final String tenant;
-  private final String token;
   private final String collectionWrapperPropertyName;
   protected final WebClient webClient;
   private final Function<T, String> mapToId;
   protected final Function<T, JsonObject> mapToRequest;
   protected final Function<JsonObject, T> mapFromResponse;
+  protected final StandardHeaders standardHeaders;
 
-  ExternalStorageModuleCollection(String storageAddress, String tenant,
-    String token, String collectionWrapperPropertyName, HttpClient client,
-    Function<T, String> mapToId, Function<T, JsonObject> mapToRequest,
-    Function<JsonObject, T> mapFromResponse) {
+  ExternalStorageModuleCollection(String storageAddress,
+    String collectionWrapperPropertyName, HttpClient client,
+    StandardHeaders standardHeaders, Function<T, String> mapToId,
+    Function<T, JsonObject> mapToRequest, Function<JsonObject, T> mapFromResponse) {
 
     this.storageAddress = storageAddress;
-    this.tenant = tenant;
-    this.token = token;
     this.collectionWrapperPropertyName = collectionWrapperPropertyName;
     this.webClient = WebClient.wrap(client);
     this.mapToId = mapToId;
     this.mapToRequest = mapToRequest;
     this.mapFromResponse = mapFromResponse;
+    this.standardHeaders = standardHeaders;
   }
 
-  ExternalStorageModuleCollection(String storageAddress, String tenant,
-    String token, String collectionWrapperPropertyName,
-    HttpClient client, Function<T, String> mapToId,
-    StorageMapper<T> storageMapper) {
+  ExternalStorageModuleCollection(String storageAddress,
+    String collectionWrapperPropertyName, StandardHeaders standardHeaders,
+    HttpClient client, Function<T, String> mapToId, StorageMapper<T> storageMapper) {
 
-    this(storageAddress, tenant, token, collectionWrapperPropertyName, client,
-      mapToId, storageMapper::mapToRequest, storageMapper::mapFromResponse);
+    this(storageAddress, collectionWrapperPropertyName, client,
+      standardHeaders, mapToId, storageMapper::mapToRequest,
+      storageMapper::mapFromResponse);
   }
 
-  public void add(T item,
-                  Consumer<Success<T>> resultCallback,
-                  Consumer<Failure> failureCallback) {
+  public void add(T item, Consumer<Success<T>> resultCallback,
+    Consumer<Failure> failureCallback) {
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
-    final HttpRequest<Buffer> request = withStandardHeaders(webClient.postAbs(storageAddress));
+    final var request = standardHeaders.applyTo(webClient.postAbs(storageAddress));
 
     request.sendJsonObject(mapToRequest.apply(item), futureResponse::complete);
 
@@ -102,8 +93,8 @@ abstract class ExternalStorageModuleCollection<T> {
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
-    final HttpRequest<Buffer> request = withStandardHeaders(
-      webClient.getAbs(individualRecordLocation(id)));
+    final var request = standardHeaders
+      .applyTo(webClient.getAbs(individualRecordLocation(id)));
 
     request.send(futureResponse::complete);
 
@@ -181,7 +172,7 @@ abstract class ExternalStorageModuleCollection<T> {
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
-    final HttpRequest<Buffer> request = withStandardHeaders(webClient.putAbs(location));
+    final var request = standardHeaders.applyTo(webClient.putAbs(location));
 
     request.sendJsonObject(mapToRequest.apply(item), futureResponse::complete);
 
@@ -202,20 +193,13 @@ abstract class ExternalStorageModuleCollection<T> {
     return String.format("%s/%s", storageAddress, id);
   }
 
-  protected HttpRequest<Buffer> withStandardHeaders(HttpRequest<Buffer> request) {
-    return request
-      .putHeader(ACCEPT, "application/json, text/plain")
-      .putHeader(TENANT_HEADER, tenant)
-      .putHeader(TOKEN_HEADER, token);
-  }
-
   private void find(String location,
     Consumer<Success<MultipleRecords<T>>> resultCallback,
     Consumer<Failure> failureCallback) {
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
-    final HttpRequest<Buffer> request = withStandardHeaders(webClient.getAbs(location));
+    final var request = standardHeaders.applyTo(webClient.getAbs(location));
 
     request.send(futureResponse::complete);
 
@@ -260,7 +244,7 @@ abstract class ExternalStorageModuleCollection<T> {
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
-    final HttpRequest<Buffer> request = withStandardHeaders(webClient.deleteAbs(location));
+    final var request = standardHeaders.applyTo(webClient.deleteAbs(location));
 
     request.send(futureResponse::complete);
 

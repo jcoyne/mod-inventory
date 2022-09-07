@@ -13,7 +13,7 @@ class ExternalStorageModuleItemCollection
     String token, HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "item-storage/items"),
-      tenant, token, "items", client,
-      Item::getId, new ItemStorageMapper());
+      "items", new StandardHeaders(tenant, token),
+      client, Item::getId, new ItemStorageMapper());
   }
 }

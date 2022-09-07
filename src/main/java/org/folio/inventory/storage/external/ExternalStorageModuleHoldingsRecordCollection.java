@@ -15,7 +15,7 @@ class ExternalStorageModuleHoldingsRecordCollection
                                          HttpClient client) {
 
     super(String.format("%s/%s", baseAddress, "holdings-storage/holdings"),
-      tenant, token, "holdingsRecords", client,
-      HoldingsRecord::getId, new HoldingsRecordStorageMapper());
+      "holdingsRecords", new StandardHeaders(tenant, token),
+      client, HoldingsRecord::getId, new HoldingsRecordStorageMapper());
   }
 }
