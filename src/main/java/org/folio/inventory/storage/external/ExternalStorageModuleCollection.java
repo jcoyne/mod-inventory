@@ -1,16 +1,11 @@
 package org.folio.inventory.storage.external;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
-import static java.util.concurrent.CompletableFuture.failedFuture;
 import static org.apache.http.HttpHeaders.ACCEPT;
-import static org.apache.http.HttpHeaders.CONTENT_TYPE;
-import static org.apache.http.HttpHeaders.LOCATION;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -83,7 +78,8 @@ abstract class ExternalStorageModuleCollection<T> {
     request.sendJsonObject(mapToRequest.apply(item), futureResponse::complete);
 
     futureResponse
-      .thenCompose(this::mapAsyncResultToCompletionStage)
+      .thenCompose(asyncResult -> new ResponseMapper().mapAsyncResultToCompletionStage(asyncResult
+      ))
       .thenAccept(response -> {
         if (response.getStatusCode() == 201) {
           try {
@@ -112,7 +108,8 @@ abstract class ExternalStorageModuleCollection<T> {
     request.send(futureResponse::complete);
 
     futureResponse
-      .thenCompose(this::mapAsyncResultToCompletionStage)
+      .thenCompose(asyncResult -> new ResponseMapper().mapAsyncResultToCompletionStage(asyncResult
+      ))
       .thenAccept(response -> {
         switch (response.getStatusCode()) {
           case 200:
@@ -189,7 +186,8 @@ abstract class ExternalStorageModuleCollection<T> {
     request.sendJsonObject(mapToRequest.apply(item), futureResponse::complete);
 
     futureResponse
-      .thenCompose(this::mapAsyncResultToCompletionStage)
+      .thenCompose(asyncResult -> new ResponseMapper().mapAsyncResultToCompletionStage(asyncResult
+      ))
       .thenAccept(response ->
         interpretNoContentResponse(response, completionCallback, failureCallback));
   }
@@ -211,23 +209,9 @@ abstract class ExternalStorageModuleCollection<T> {
       .putHeader(TOKEN_HEADER, token);
   }
 
-  protected CompletionStage<Response> mapAsyncResultToCompletionStage(
-    AsyncResult<HttpResponse<Buffer>> asyncResult) {
-
-    return asyncResult.succeeded()
-      ? completedFuture(mapResponse(asyncResult))
-      : failedFuture(asyncResult.cause());
-  }
-
-  private Response mapResponse(AsyncResult<HttpResponse<Buffer>> asyncResult) {
-    final var response = asyncResult.result();
-
-    return new Response(response.statusCode(), response.bodyAsString(),
-      response.getHeader(CONTENT_TYPE), response.getHeader(LOCATION));
-  }
-
   private void find(String location,
-                    Consumer<Success<MultipleRecords<T>>> resultCallback, Consumer<Failure> failureCallback) {
+    Consumer<Success<MultipleRecords<T>>> resultCallback,
+    Consumer<Failure> failureCallback) {
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
@@ -236,7 +220,8 @@ abstract class ExternalStorageModuleCollection<T> {
     request.send(futureResponse::complete);
 
     futureResponse
-      .thenCompose(this::mapAsyncResultToCompletionStage)
+      .thenCompose(asyncResult -> new ResponseMapper().mapAsyncResultToCompletionStage(asyncResult
+      ))
       .thenAccept(response ->
         interpretMultipleRecordResponse(resultCallback, failureCallback, response));
   }
@@ -280,7 +265,8 @@ abstract class ExternalStorageModuleCollection<T> {
     request.send(futureResponse::complete);
 
     futureResponse
-      .thenCompose(this::mapAsyncResultToCompletionStage)
+      .thenCompose(asyncResult -> new ResponseMapper().mapAsyncResultToCompletionStage(asyncResult
+      ))
       .thenAccept(response ->
         interpretNoContentResponse(response, completionCallback, failureCallback));
   }

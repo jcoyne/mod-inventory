@@ -67,7 +67,7 @@ class ExternalStorageModuleInstanceCollection
     request.sendJsonObject(batchRequest, futureResponse::complete);
 
     futureResponse
-      .thenCompose(this::mapAsyncResultToCompletionStage)
+      .thenCompose(asyncResult -> new ResponseMapper().mapAsyncResultToCompletionStage(asyncResult))
       .thenAccept(response -> {
         if (isBatchResponse(response)) {
           try {
