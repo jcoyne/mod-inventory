@@ -205,14 +205,6 @@ abstract class ExternalStorageModuleCollection<T> {
     return String.format("%s/%s", storageAddress, id);
   }
 
-  public static <T>  void includeIfPresent(JsonObject instanceToSend,
-    String propertyName, T propertyValue) {
-
-    if (propertyValue != null) {
-      instanceToSend.put(propertyName, propertyValue);
-    }
-  }
-
   protected HttpRequest<Buffer> withStandardHeaders(HttpRequest<Buffer> request) {
     return request
       .putHeader(ACCEPT, "application/json, text/plain")
