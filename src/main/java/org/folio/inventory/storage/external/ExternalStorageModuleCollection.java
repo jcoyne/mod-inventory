@@ -143,8 +143,7 @@ abstract class ExternalStorageModuleCollection<T> {
     Consumer<Success<MultipleRecords<T>>> resultCallback,
     Consumer<Failure> failureCallback) {
 
-    String location = String.format(storageAddress
-        + "?limit=%s&offset=%s",
+    String location = String.format("%s?limit=%s&offset=%s", storageAddress,
       pagingParameters.limit, pagingParameters.offset);
 
     find(location, resultCallback, failureCallback);
