@@ -53,7 +53,7 @@ class ExternalStorageModuleInstanceCollection
     Consumer<Success<BatchResult<Instance>>> resultCallback, Consumer<Failure> failureCallback) {
 
     List<JsonObject> jsonList = items.stream()
-      .map(this.mapToRequest)
+      .map(storageMapper::mapToRequest)
       .collect(Collectors.toList());
 
     JsonObject batchRequest = new JsonObject()
@@ -76,7 +76,7 @@ class ExternalStorageModuleInstanceCollection
 
             List<Instance> instancesList = new ArrayList<>();
             for (int i = 0; i < createdInstances.size(); i++) {
-              instancesList.add(mapFromResponse.apply(createdInstances.getJsonObject(i)));
+              instancesList.add(storageMapper.mapFromResponse(createdInstances.getJsonObject(i)));
             }
             BatchResult<Instance> batchResult = new BatchResult<>();
             batchResult.setBatchItems(instancesList);

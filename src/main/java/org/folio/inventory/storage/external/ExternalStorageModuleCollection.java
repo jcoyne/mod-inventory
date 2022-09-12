@@ -33,31 +33,19 @@ abstract class ExternalStorageModuleCollection<T> {
   private final String collectionWrapperPropertyName;
   private final WebClient webClient;
   private final Function<T, String> mapToId;
-  protected final Function<T, JsonObject> mapToRequest;
-  protected final Function<JsonObject, T> mapFromResponse;
+  protected final StorageMapper<T> storageMapper;
   private final StandardHeaders standardHeaders;
-
-  ExternalStorageModuleCollection(String storageAddress,
-    String collectionWrapperPropertyName, HttpClient client,
-    StandardHeaders standardHeaders, Function<T, String> mapToId,
-    Function<T, JsonObject> mapToRequest, Function<JsonObject, T> mapFromResponse) {
-
-    this.storageAddress = storageAddress;
-    this.collectionWrapperPropertyName = collectionWrapperPropertyName;
-    this.webClient = WebClient.wrap(client);
-    this.mapToId = mapToId;
-    this.mapToRequest = mapToRequest;
-    this.mapFromResponse = mapFromResponse;
-    this.standardHeaders = standardHeaders;
-  }
 
   ExternalStorageModuleCollection(String storageAddress,
     String collectionWrapperPropertyName, StandardHeaders standardHeaders,
     HttpClient client, Function<T, String> mapToId, StorageMapper<T> storageMapper) {
 
-    this(storageAddress, collectionWrapperPropertyName, client,
-      standardHeaders, mapToId, storageMapper::mapToRequest,
-      storageMapper::mapFromResponse);
+    this.storageAddress = storageAddress;
+    this.collectionWrapperPropertyName = collectionWrapperPropertyName;
+    this.webClient = WebClient.wrap(client);
+    this.mapToId = mapToId;
+    this.standardHeaders = standardHeaders;
+    this.storageMapper = storageMapper;
   }
 
   public void add(T item, Consumer<Success<T>> resultCallback,
@@ -67,7 +55,7 @@ abstract class ExternalStorageModuleCollection<T> {
 
     final var request = createPostRequest(storageAddress);
 
-    request.sendJsonObject(mapToRequest.apply(item), futureResponse::complete);
+    request.sendJsonObject(storageMapper.mapToRequest(item), futureResponse::complete);
 
     futureResponse
       .thenCompose(asyncResult -> new ResponseMapper().mapAsyncResultToCompletionStage(asyncResult
@@ -75,7 +63,7 @@ abstract class ExternalStorageModuleCollection<T> {
       .thenAccept(response -> {
         if (response.getStatusCode() == 201) {
           try {
-            T created = mapFromResponse.apply(response.getJson());
+            T created = storageMapper.mapFromResponse(response.getJson());
             resultCallback.accept(new Success<>(created));
           } catch (Exception e) {
             LOGGER.error(e);
@@ -108,7 +96,7 @@ abstract class ExternalStorageModuleCollection<T> {
             JsonObject instanceFromServer = response.getJson();
 
             try {
-              T found = mapFromResponse.apply(instanceFromServer);
+              T found = storageMapper.mapFromResponse(instanceFromServer);
               resultCallback.accept(new Success<>(found));
               break;
             } catch (Exception e) {
@@ -175,7 +163,7 @@ abstract class ExternalStorageModuleCollection<T> {
 
     final var request = standardHeaders.applyTo(webClient.putAbs(location));
 
-    request.sendJsonObject(mapToRequest.apply(item), futureResponse::complete);
+    request.sendJsonObject(storageMapper.mapToRequest(item), futureResponse::complete);
 
     futureResponse
       .thenCompose(asyncResult -> new ResponseMapper().mapAsyncResultToCompletionStage(asyncResult
@@ -223,7 +211,7 @@ abstract class ExternalStorageModuleCollection<T> {
           wrappedRecords.getJsonArray(collectionWrapperPropertyName));
 
         List<T> foundRecords = records.stream()
-          .map(mapFromResponse)
+          .map(storageMapper::mapFromResponse)
           .collect(Collectors.toList());
 
         MultipleRecords<T> result = new MultipleRecords<>(
