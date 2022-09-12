@@ -62,8 +62,7 @@ class ExternalStorageModuleInstanceCollection
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
-    final HttpRequest<Buffer> request = standardHeaders
-      .applyTo(webClient.postAbs(batchAddress));
+    final HttpRequest<Buffer> request = createPostRequest(batchAddress);
 
     request.sendJsonObject(batchRequest, futureResponse::complete);
 

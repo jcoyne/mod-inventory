@@ -22,6 +22,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 
@@ -30,11 +31,11 @@ abstract class ExternalStorageModuleCollection<T> {
 
   private final String storageAddress;
   private final String collectionWrapperPropertyName;
-  protected final WebClient webClient;
+  private final WebClient webClient;
   private final Function<T, String> mapToId;
   protected final Function<T, JsonObject> mapToRequest;
   protected final Function<JsonObject, T> mapFromResponse;
-  protected final StandardHeaders standardHeaders;
+  private final StandardHeaders standardHeaders;
 
   ExternalStorageModuleCollection(String storageAddress,
     String collectionWrapperPropertyName, HttpClient client,
@@ -64,7 +65,7 @@ abstract class ExternalStorageModuleCollection<T> {
 
     final var futureResponse = new CompletableFuture<AsyncResult<HttpResponse<Buffer>>>();
 
-    final var request = standardHeaders.applyTo(webClient.postAbs(storageAddress));
+    final var request = createPostRequest(storageAddress);
 
     request.sendJsonObject(mapToRequest.apply(item), futureResponse::complete);
 
@@ -237,6 +238,10 @@ abstract class ExternalStorageModuleCollection<T> {
     } else {
       failureCallback.accept(new Failure(response.getBody(), response.getStatusCode()));
     }
+  }
+
+  protected HttpRequest<Buffer> createPostRequest(String address) {
+    return standardHeaders.applyTo(webClient.postAbs(address));
   }
 
   private void deleteLocation(String location, Consumer<Success<Void>> completionCallback,
