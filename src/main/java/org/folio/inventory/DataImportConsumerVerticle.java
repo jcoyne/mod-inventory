@@ -1,7 +1,5 @@
 package org.folio.inventory;
 
-import static java.lang.String.format;
-
 import static org.folio.DataImportEventTypes.DI_INVENTORY_HOLDING_CREATED;
 import static org.folio.DataImportEventTypes.DI_INVENTORY_HOLDING_MATCHED;
 import static org.folio.DataImportEventTypes.DI_INVENTORY_HOLDING_NOT_MATCHED;
@@ -15,6 +13,7 @@ import static org.folio.DataImportEventTypes.DI_INVENTORY_ITEM_MATCHED;
 import static org.folio.DataImportEventTypes.DI_INVENTORY_ITEM_NOT_MATCHED;
 import static org.folio.DataImportEventTypes.DI_MARC_FOR_UPDATE_RECEIVED;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_CREATED;
+import static org.folio.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_NOT_MATCHED;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_CREATED;
@@ -26,7 +25,6 @@ import static org.folio.DataImportEventTypes.DI_SRS_MARC_BIB_RECORD_NOT_MATCHED;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_MODIFIED_READY_FOR_POST_PROCESSING;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_HOLDINGS_RECORD_NOT_MATCHED;
 import static org.folio.DataImportEventTypes.DI_SRS_MARC_HOLDING_RECORD_CREATED;
-import static org.folio.DataImportEventTypes.DI_SRS_MARC_AUTHORITY_RECORD_DELETED;
 import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_ENV;
 import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_HOST;
 import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_MAX_REQUEST_SIZE;
@@ -97,7 +95,7 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
 
   private final int loadLimit = getLoadLimit();
   private final int maxDistributionNumber = getMaxDistributionNumber();
-  private List<KafkaConsumerWrapper<String, String>> consumerWrappers = new ArrayList<>();
+  private final List<KafkaConsumerWrapper<String, String>> consumerWrappers = new ArrayList<>();
 
   @Override
   public void start(Promise<Void> startPromise) {
@@ -110,11 +108,12 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
       .replicationFactor(Integer.parseInt(config.getString(KAFKA_REPLICATION_FACTOR)))
       .maxRequestSize(Integer.parseInt(config.getString(KAFKA_MAX_REQUEST_SIZE)))
       .build();
-    LOGGER.info(format("kafkaConfig: %s", kafkaConfig));
+    LOGGER.info("kafkaConfig: {}", kafkaConfig);
     EventManager.registerKafkaEventPublisher(kafkaConfig, vertx, maxDistributionNumber);
 
     HttpClient client = vertx.createHttpClient();
-    Storage storage = Storage.basedUpon(config, client);
+
+    Storage storage = Storage.useOkapi(client);
 
     String profileSnapshotExpirationTime = getCacheEnvVariable(config, "inventory.profile-snapshot-cache.expiration.time.seconds");
     String mappingMetadataExpirationTime = getCacheEnvVariable(config, "inventory.mapping-metadata-cache.expiration.time.seconds");

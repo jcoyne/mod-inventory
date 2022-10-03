@@ -1,11 +1,14 @@
 package org.folio.inventory;
 
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Future;
-import io.vertx.core.Promise;
-import io.vertx.core.http.HttpClient;
-import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.WebClient;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_ENV;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_HOST;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_MAX_REQUEST_SIZE;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_PORT;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_REPLICATION_FACTOR;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.OKAPI_URL;
+import static org.folio.kafka.KafkaTopicNameHelper.createSubscriptionDefinition;
+import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.inventory.dataimport.consumers.QuickMarcKafkaHandler;
@@ -19,15 +22,12 @@ import org.folio.kafka.GlobalLoadSensor;
 import org.folio.kafka.KafkaConfig;
 import org.folio.kafka.KafkaConsumerWrapper;
 
-import static java.lang.String.format;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_ENV;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_HOST;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_MAX_REQUEST_SIZE;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_PORT;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_REPLICATION_FACTOR;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.OKAPI_URL;
-import static org.folio.kafka.KafkaTopicNameHelper.createSubscriptionDefinition;
-import static org.folio.kafka.KafkaTopicNameHelper.getDefaultNameSpace;
+import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
+import io.vertx.core.Promise;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.client.WebClient;
 
 public class QuickMarcConsumerVerticle extends AbstractVerticle {
 
@@ -43,7 +43,7 @@ public class QuickMarcConsumerVerticle extends AbstractVerticle {
     KafkaConfig kafkaConfig = getKafkaConfig(config);
 
     HttpClient client = vertx.createHttpClient();
-    Storage storage = Storage.basedUpon(config, client);
+    Storage storage = Storage.useOkapi(client);
 
     var precedingSucceedingTitlesHelper = new PrecedingSucceedingTitlesHelper(WebClient.wrap(client));
     HoldingsCollectionService holdingsCollectionService = new HoldingsCollectionService();

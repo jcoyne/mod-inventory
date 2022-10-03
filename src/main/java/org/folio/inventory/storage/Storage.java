@@ -46,7 +46,7 @@ public class Storage {
     return new Storage(context -> new ExternalStorageCollections(location, client));
   }
 
-  private static Storage useOkapi(HttpClient client) {
+  public static Storage useOkapi(HttpClient client) {
     return new Storage(context ->
       new ExternalStorageCollections(context.getOkapiLocation(), client));
   }
