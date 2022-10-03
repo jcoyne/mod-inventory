@@ -26,22 +26,29 @@ public class Storage {
 
     switch(storageType) {
       case "external":
-        String location = config.getString("storage.location", null);
-
-        if(location == null) {
-          throw new IllegalArgumentException(
-            "For external storage, location must be provided.");
-        }
-
-        return new Storage(context -> new ExternalStorageCollections(location, client));
+        return useExternalLocation(client,
+          config.getString("storage.location", null));
 
       case "okapi":
-        return new Storage(context ->
-          new ExternalStorageCollections(context.getOkapiLocation(), client));
+        return useOkapi(client);
 
       default:
         throw new IllegalArgumentException("Storage type must be one of [external, okapi]");
     }
+  }
+
+  private static Storage useExternalLocation(HttpClient client, String location) {
+    if (location == null) {
+      throw new IllegalArgumentException(
+        "For external storage, location must be provided.");
+    }
+
+    return new Storage(context -> new ExternalStorageCollections(location, client));
+  }
+
+  private static Storage useOkapi(HttpClient client) {
+    return new Storage(context ->
+      new ExternalStorageCollections(context.getOkapiLocation(), client));
   }
 
   public ItemCollection getItemCollection(Context context) {
