@@ -12,38 +12,12 @@ import org.folio.inventory.domain.user.UserCollection;
 import org.folio.inventory.storage.external.ExternalStorageCollections;
 
 import io.vertx.core.http.HttpClient;
-import io.vertx.core.json.JsonObject;
 
 public class Storage {
   private final Function<Context, ExternalStorageCollections> collectionFactory;
 
   private Storage(final Function<Context, ExternalStorageCollections> collectionFactory) {
     this.collectionFactory = collectionFactory;
-  }
-
-  public static Storage basedUpon(JsonObject config, HttpClient client) {
-    String storageType = config.getString("storage.type", "okapi");
-
-    switch(storageType) {
-      case "external":
-        return useExternalLocation(client,
-          config.getString("storage.location", null));
-
-      case "okapi":
-        return useOkapi(client);
-
-      default:
-        throw new IllegalArgumentException("Storage type must be one of [external, okapi]");
-    }
-  }
-
-  private static Storage useExternalLocation(HttpClient client, String location) {
-    if (location == null) {
-      throw new IllegalArgumentException(
-        "For external storage, location must be provided.");
-    }
-
-    return new Storage(context -> new ExternalStorageCollections(location, client));
   }
 
   public static Storage useOkapi(HttpClient client) {

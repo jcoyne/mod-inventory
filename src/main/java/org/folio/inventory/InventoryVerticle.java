@@ -45,7 +45,7 @@ public class InventoryVerticle extends AbstractVerticle {
 
     final var client = vertx.createHttpClient();
 
-    final var storage = Storage.basedUpon(config, client);
+    final var storage = Storage.useOkapi(client);
 
     router.route().handler(WebRequestDiagnostics::outputDiagnostics);
 
