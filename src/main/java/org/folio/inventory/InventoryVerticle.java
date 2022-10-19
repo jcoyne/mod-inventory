@@ -22,7 +22,6 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
-import io.vertx.core.http.HttpClient;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -34,22 +33,19 @@ public class InventoryVerticle extends AbstractVerticle {
   public void start(Promise<Void> started) {
     Logging.initialiseFormat();
 
-    final Logger log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    final var log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-    Router router = Router.router(vertx);
+    final var router = Router.router(vertx);
 
     server = vertx.createHttpServer();
 
-    JsonObject config = vertx.getOrCreateContext().config();
+    final var config = vertx.getOrCreateContext().config();
 
-    log.info("Received Config");
+    logConfig(log, config);
 
-    config.fieldNames().forEach(key ->
-      log.info(String.format("%s:%s", key, config.getValue(key).toString())));
+    final var client = vertx.createHttpClient();
 
-    HttpClient client = vertx.createHttpClient();
-
-    Storage storage = Storage.basedUpon(config, client);
+    final var storage = Storage.basedUpon(config, client);
 
     router.route().handler(WebRequestDiagnostics::outputDiagnostics);
 
@@ -79,7 +75,7 @@ public class InventoryVerticle extends AbstractVerticle {
 
   @Override
   public void stop(Promise<Void> stopped) {
-    final Logger log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    final var log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
     PostgresClientFactory.closeAll();
 
@@ -92,5 +88,12 @@ public class InventoryVerticle extends AbstractVerticle {
         stopped.fail(result.cause());
       }
     });
+  }
+
+  private static void logConfig(Logger log, JsonObject config) {
+    log.info("Received Config");
+
+    config.fieldNames().forEach(key ->
+      log.info(String.format("%s:%s", key, config.getValue(key).toString())));
   }
 }
