@@ -1,8 +1,11 @@
 package org.folio.inventory;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.folio.inventory.common.VertxAssistant;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_ENV;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_HOST;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_MAX_REQUEST_SIZE;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_PORT;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_REPLICATION_FACTOR;
+import static org.folio.inventory.dataimport.util.KafkaConfigConstants.OKAPI_URL;
 
 import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
@@ -12,12 +15,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_ENV;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_HOST;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_MAX_REQUEST_SIZE;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_PORT;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.KAFKA_REPLICATION_FACTOR;
-import static org.folio.inventory.dataimport.util.KafkaConfigConstants.OKAPI_URL;
+import org.apache.logging.log4j.LogManager;
+import org.folio.inventory.common.VertxAssistant;
 
 public class Launcher {
   private static final String DATA_IMPORT_CONSUMER_VERTICLE_INSTANCES_NUMBER_CONFIG = "inventory.kafka.DataImportConsumerVerticle.instancesNumber";
@@ -37,19 +36,19 @@ public class Launcher {
 
     Runtime.getRuntime().addShutdownHook(new Thread(Launcher::stop));
 
-    Map<String, Object> config = new HashMap<>();
+    final var config = new HashMap<String, Object>();
 
-    String portString = System.getProperty("http.port", System.getProperty("port", "9403"));
-    Integer port = Integer.valueOf(portString);
+    final var portString = System.getProperty("http.port", System.getProperty("port", "9403"));
+    final var port = Integer.valueOf(portString);
 
-    String storageType = System.getProperty(
+    final var storageType = System.getProperty(
       "org.folio.metadata.inventory.storage.type", null);
 
-    String kafkaConsumersToBeInitialized = System.getProperty(
-      "org.folio.metadata.inventory.kafka.consumers.initialized", "true");
-
-    String storageLocation = System.getProperty(
+    final var storageLocation = System.getProperty(
       "org.folio.metadata.inventory.storage.location", null);
+
+    final var deployKafkaConsumerVerticles = System.getProperty(
+      "org.folio.metadata.inventory.kafka.consumers.initialized", "true");
 
     putNonNullConfig("storage.type", storageType, config);
     putNonNullConfig("storage.location", storageLocation, config);
@@ -57,22 +56,21 @@ public class Launcher {
 
     start(config);
 
-    if(Boolean.parseBoolean(kafkaConsumersToBeInitialized)){
-      Map<String, Object> consumerVerticlesConfig = getConsumerVerticleConfig();
-      startConsumerVerticles(consumerVerticlesConfig);
+    if (Boolean.parseBoolean(deployKafkaConsumerVerticles)) {
+      startConsumerVerticles(getConsumerVerticleConfig());
     }
   }
 
   private static void start(Map<String, Object> config)
     throws InterruptedException, ExecutionException, TimeoutException {
 
-    final Logger log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    final var log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
     vertxAssistant.start();
 
     log.info("Server Starting");
 
-    CompletableFuture<String> deployed = new CompletableFuture<>();
+    final var deployed = new CompletableFuture<String>();
 
     vertxAssistant.deployVerticle(InventoryVerticle.class.getName(),
       config, deployed);
@@ -84,29 +82,33 @@ public class Launcher {
 
   private static void startConsumerVerticles(Map<String, Object> consumerVerticlesConfig)
     throws InterruptedException, ExecutionException, TimeoutException {
-    int dataImportConsumerVerticleNumber = Integer.parseInt(System.getenv().getOrDefault(DATA_IMPORT_CONSUMER_VERTICLE_INSTANCES_NUMBER_CONFIG, "3"));
-    int instanceHridSetConsumerVerticleNumber = Integer.parseInt(System.getenv().getOrDefault(MARC_BIB_INSTANCE_HRID_SET_CONSUMER_VERTICLE_INSTANCES_NUMBER_CONFIG, "3"));
-    int quickMarcConsumerVerticleNumber = Integer.parseInt(System.getenv().getOrDefault(QUICK_MARC_CONSUMER_VERTICLE_INSTANCES_NUMBER_CONFIG, "1"));
 
-    CompletableFuture<String> future1 = new CompletableFuture<>();
-    CompletableFuture<String> future2 = new CompletableFuture<>();
-    CompletableFuture<String> future3 = new CompletableFuture<>();
+    final var dataImportConsumerVerticleNumber = Integer.parseInt(System.getenv().getOrDefault(DATA_IMPORT_CONSUMER_VERTICLE_INSTANCES_NUMBER_CONFIG, "3"));
+    final var instanceHridSetConsumerVerticleNumber = Integer.parseInt(System.getenv().getOrDefault(MARC_BIB_INSTANCE_HRID_SET_CONSUMER_VERTICLE_INSTANCES_NUMBER_CONFIG, "3"));
+    final var quickMarcConsumerVerticleNumber = Integer.parseInt(System.getenv().getOrDefault(QUICK_MARC_CONSUMER_VERTICLE_INSTANCES_NUMBER_CONFIG, "1"));
+
+    final var dataImportVerticleDeployed = new CompletableFuture<String>();
+    final var marcInstanceHridVerticleDeployed = new CompletableFuture<String>();
+    final var quickMarcVerticleDeployed = new CompletableFuture<String>();
+
     vertxAssistant.deployVerticle(DataImportConsumerVerticle.class.getName(),
-      consumerVerticlesConfig, dataImportConsumerVerticleNumber, future1);
-    vertxAssistant.deployVerticle(MarcHridSetConsumerVerticle.class.getName(),
-      consumerVerticlesConfig, instanceHridSetConsumerVerticleNumber, future2);
-    vertxAssistant.deployVerticle(QuickMarcConsumerVerticle.class.getName(),
-      consumerVerticlesConfig, quickMarcConsumerVerticleNumber, future3);
+      consumerVerticlesConfig, dataImportConsumerVerticleNumber, dataImportVerticleDeployed);
 
-    consumerVerticleDeploymentId = future1.get(20, TimeUnit.SECONDS);
-    marcInstHridSetConsumerVerticleDeploymentId = future2.get(20, TimeUnit.SECONDS);
-    quickMarcConsumerVerticleDeploymentId = future3.get(20, TimeUnit.SECONDS);
+    vertxAssistant.deployVerticle(MarcHridSetConsumerVerticle.class.getName(),
+      consumerVerticlesConfig, instanceHridSetConsumerVerticleNumber, marcInstanceHridVerticleDeployed);
+
+    vertxAssistant.deployVerticle(QuickMarcConsumerVerticle.class.getName(),
+      consumerVerticlesConfig, quickMarcConsumerVerticleNumber, quickMarcVerticleDeployed);
+
+    consumerVerticleDeploymentId = dataImportVerticleDeployed.get(20, TimeUnit.SECONDS);
+    marcInstHridSetConsumerVerticleDeploymentId = marcInstanceHridVerticleDeployed.get(20, TimeUnit.SECONDS);
+    quickMarcConsumerVerticleDeploymentId = quickMarcVerticleDeployed.get(20, TimeUnit.SECONDS);
   }
 
   private static void stop() {
-    final Logger log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
+    final var log = LogManager.getLogger(MethodHandles.lookup().lookupClass());
 
-    CompletableFuture<Void> stopped = new CompletableFuture<>();
+    final var stopped = new CompletableFuture<Void>();
 
     log.info("Server Stopping");
 
@@ -119,29 +121,28 @@ public class Launcher {
     stopped.thenAccept(v -> log.info("Server Stopped"));
   }
 
-  private static void putNonNullConfig(
-    String key,
-    Object value,
-    Map<String, Object> config) {
-
-    if(value != null) {
+  private static void putNonNullConfig(String key, Object value, Map<String, Object> config) {
+    if (value != null) {
       config.put(key, value);
     }
   }
 
   private static Map<String, Object> getConsumerVerticleConfig() {
-    Map<String, Object> configMap = new HashMap<>();
-    configMap.put(KAFKA_HOST, System.getenv().getOrDefault(KAFKA_HOST, "kafka"));
-    configMap.put(KAFKA_PORT, System.getenv().getOrDefault(KAFKA_PORT, "9092"));
-    configMap.put(OKAPI_URL, System.getenv().getOrDefault(OKAPI_URL, "http://okapi:9130"));
-    configMap.put(KAFKA_REPLICATION_FACTOR, System.getenv().getOrDefault(KAFKA_REPLICATION_FACTOR, "1"));
-    configMap.put(KAFKA_ENV, System.getenv().getOrDefault(KAFKA_ENV, "folio"));
-    configMap.put(KAFKA_MAX_REQUEST_SIZE, System.getenv().getOrDefault(KAFKA_MAX_REQUEST_SIZE, "4000000"));
+    final var config = new HashMap<String, Object>();
 
-    String storageType = System.getProperty("org.folio.metadata.inventory.storage.type");
-    String storageLocation = System.getProperty("org.folio.metadata.inventory.storage.location");
-    putNonNullConfig("storage.type", storageType, configMap);
-    putNonNullConfig("storage.location", storageLocation, configMap);
-    return configMap;
+    config.put(KAFKA_HOST, System.getenv().getOrDefault(KAFKA_HOST, "kafka"));
+    config.put(KAFKA_PORT, System.getenv().getOrDefault(KAFKA_PORT, "9092"));
+    config.put(OKAPI_URL, System.getenv().getOrDefault(OKAPI_URL, "http://okapi:9130"));
+    config.put(KAFKA_REPLICATION_FACTOR, System.getenv().getOrDefault(KAFKA_REPLICATION_FACTOR, "1"));
+    config.put(KAFKA_ENV, System.getenv().getOrDefault(KAFKA_ENV, "folio"));
+    config.put(KAFKA_MAX_REQUEST_SIZE, System.getenv().getOrDefault(KAFKA_MAX_REQUEST_SIZE, "4000000"));
+
+    final var storageType = System.getProperty("org.folio.metadata.inventory.storage.type");
+    final var storageLocation = System.getProperty("org.folio.metadata.inventory.storage.location");
+
+    putNonNullConfig("storage.type", storageType, config);
+    putNonNullConfig("storage.location", storageLocation, config);
+
+    return config;
   }
 }
