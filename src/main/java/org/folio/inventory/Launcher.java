@@ -41,18 +41,10 @@ public class Launcher {
     final var portString = System.getProperty("http.port", System.getProperty("port", "9403"));
     final var port = Integer.valueOf(portString);
 
-    final var storageType = System.getProperty(
-      "org.folio.metadata.inventory.storage.type", null);
-
-    final var storageLocation = System.getProperty(
-      "org.folio.metadata.inventory.storage.location", null);
+    putNonNullConfig("port", port, config);
 
     final var deployKafkaConsumerVerticles = System.getProperty(
       "org.folio.metadata.inventory.kafka.consumers.initialized", "true");
-
-    putNonNullConfig("storage.type", storageType, config);
-    putNonNullConfig("storage.location", storageLocation, config);
-    putNonNullConfig("port", port, config);
 
     start(config);
 
@@ -136,12 +128,6 @@ public class Launcher {
     config.put(KAFKA_REPLICATION_FACTOR, System.getenv().getOrDefault(KAFKA_REPLICATION_FACTOR, "1"));
     config.put(KAFKA_ENV, System.getenv().getOrDefault(KAFKA_ENV, "folio"));
     config.put(KAFKA_MAX_REQUEST_SIZE, System.getenv().getOrDefault(KAFKA_MAX_REQUEST_SIZE, "4000000"));
-
-    final var storageType = System.getProperty("org.folio.metadata.inventory.storage.type");
-    final var storageLocation = System.getProperty("org.folio.metadata.inventory.storage.location");
-
-    putNonNullConfig("storage.type", storageType, config);
-    putNonNullConfig("storage.location", storageLocation, config);
 
     return config;
   }
