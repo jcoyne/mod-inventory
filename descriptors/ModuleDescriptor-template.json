@@ -807,7 +807,7 @@
     },
     "env": [
       { "name": "JAVA_OPTIONS",
-        "value": "-XX:MaxRAMPercentage=66.0 -Dorg.folio.metadata.inventory.storage.type=okapi"
+        "value": "-XX:MaxRAMPercentage=66.0"
       },
       {
         "name": "DB_HOST",
