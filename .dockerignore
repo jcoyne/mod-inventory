@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!docker*
+!mod-source-record-manager-server/target/*.jar
+!target/*.jar
+!scripts/run-java.sh
