@@ -43,6 +43,7 @@ public class ProfileSnapshotCache {
 
   public Future<Optional<ProfileSnapshotWrapper>> get(String profileSnapshotId, Context context) {
     try {
+      LOGGER.info("get profileSnapshotId: {}", profileSnapshotId);
       return Future.fromCompletionStage(cache.get(profileSnapshotId, (key, executor) -> loadJobProfileSnapshot(key, context)));
     } catch (Exception e) {
       LOGGER.warn("Error loading ProfileSnapshotWrapper by id: '{}'", profileSnapshotId, e);
@@ -52,7 +53,7 @@ public class ProfileSnapshotCache {
 
   @SneakyThrows
   private CompletableFuture<Optional<ProfileSnapshotWrapper>> loadJobProfileSnapshot(String profileSnapshotId, Context context) {
-    LOGGER.debug("Trying to load jobProfileSnapshot by id  '{}' for cache, okapi url: {}, tenantId: {}", profileSnapshotId, context.getOkapiLocation(), context.getTenantId());
+    LOGGER.info("Trying to load jobProfileSnapshot by id  '{}' for cache, okapi url: {}, tenantId: {}", profileSnapshotId, context.getOkapiLocation(), context.getTenantId());
 
     OkapiHttpClient client = new OkapiHttpClient(WebClient.wrap(httpClient), new URL(context.getOkapiLocation()), context.getTenantId(), context.getToken(), null, null, null);
 

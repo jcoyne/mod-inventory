@@ -43,6 +43,7 @@ public class MappingMetadataCache {
 
   public Future<Optional<MappingMetadataDto>> get(String jobExecutionId, Context context) {
     try {
+      LOGGER.info("get jobExecutionId: {}", jobExecutionId);
       return Future.fromCompletionStage(cache.get(jobExecutionId, (key, executor) -> loadJobProfileSnapshot(key, context)));
     } catch (Exception e) {
       LOGGER.warn("Error loading MappingMetadata by jobExecutionId: '{}'", jobExecutionId, e);
@@ -52,6 +53,7 @@ public class MappingMetadataCache {
 
   public Future<Optional<MappingMetadataDto>> getByRecordType(String jobExecutionId, Context context, String recordType) {
     try {
+      LOGGER.info("getByRecordType jobExecutionId: {}, recordType: {}", jobExecutionId, recordType);
       return Future.fromCompletionStage(cache.get(jobExecutionId, (key, executor) -> loadMappingMetadata(recordType, context)));
     } catch (Exception e) {
       LOGGER.warn("Error loading MappingMetadata by jobExecutionId: '{}'", jobExecutionId, e);
@@ -61,7 +63,7 @@ public class MappingMetadataCache {
 
   @SneakyThrows
   private CompletableFuture<Optional<MappingMetadataDto>> loadJobProfileSnapshot(String jobExecutionId, Context context) {
-    LOGGER.debug("Trying to load MappingMetadata by jobExecutionId  '{}' for cache, okapi url: {}, tenantId: {}", jobExecutionId, context.getOkapiLocation(), context.getTenantId());
+    LOGGER.info("Trying to load MappingMetadata by jobExecutionId  '{}' for cache, okapi url: {}, tenantId: {}", jobExecutionId, context.getOkapiLocation(), context.getTenantId());
 
     OkapiHttpClient client = new OkapiHttpClient(WebClient.wrap(httpClient), new URL(context.getOkapiLocation()), context.getTenantId(), context.getToken(), null, null, null);
 
@@ -85,7 +87,7 @@ public class MappingMetadataCache {
 
   @SneakyThrows
   private CompletableFuture<Optional<MappingMetadataDto>> loadMappingMetadata(String recordType, Context context) {
-    LOGGER.debug("Trying to load MappingMetadata by recordType  '{}' for cache, okapi url: {}, tenantId: {}", recordType, context.getOkapiLocation(), context.getTenantId());
+    LOGGER.info("Trying to load MappingMetadata by recordType  '{}' for cache, okapi url: {}, tenantId: {}", recordType, context.getOkapiLocation(), context.getTenantId());
 
     OkapiHttpClient client = new OkapiHttpClient(WebClient.wrap(httpClient), new URL(context.getOkapiLocation()), context.getTenantId(), context.getToken(), null, null, null);
 

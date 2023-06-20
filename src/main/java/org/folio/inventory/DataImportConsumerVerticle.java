@@ -119,7 +119,10 @@ public class DataImportConsumerVerticle extends AbstractVerticle {
     Storage storage = Storage.basedUpon(config, client);
 
     String profileSnapshotExpirationTime = getCacheEnvVariable(config, "inventory.profile-snapshot-cache.expiration.time.seconds");
+    LOGGER.info("profileSnapshotExpirationTime: {}", profileSnapshotExpirationTime);
+
     String mappingMetadataExpirationTime = getCacheEnvVariable(config, "inventory.mapping-metadata-cache.expiration.time.seconds");
+    LOGGER.info("mappingMetadataExpirationTime: {}", mappingMetadataExpirationTime);
 
     ProfileSnapshotCache profileSnapshotCache = new ProfileSnapshotCache(vertx, client, Long.parseLong(profileSnapshotExpirationTime));
     MappingMetadataCache mappingMetadataCache = new MappingMetadataCache(vertx, client, Long.parseLong(mappingMetadataExpirationTime));
